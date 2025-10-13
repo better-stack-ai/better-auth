@@ -32,17 +32,17 @@ jobs:
 
       - name: Build packages
         run: |
-          # Build better-auth first (required dependency for better-db)
+          # Build better-auth first (required dependency for btst)
           pnpm build --filter better-auth --force
           
-          # Build better-db packages explicitly (force rebuild, no cache)
-          pnpm build --filter "@better-db/*" --force
+          # Build btst packages explicitly (force rebuild, no cache)
+          pnpm build --filter "@btst/*" --force
           
           # Verify dist folders exist
           echo "Checking dist folders..."
-          ls -la packages/better-db/core/dist/ || echo "❌ core/dist missing!"
-          ls -la packages/better-db/cli/dist/ || echo "❌ cli/dist missing!"
-          ls -la packages/better-db/plugins/dist/ || echo "❌ plugins/dist missing!"
+          ls -la packages/btst/core/dist/ || echo "❌ core/dist missing!"
+          ls -la packages/btst/cli/dist/ || echo "❌ cli/dist missing!"
+          ls -la packages/btst/plugins/dist/ || echo "❌ plugins/dist missing!"
 
       - name: Determine npm tag
         id: determine_npm_tag
@@ -55,14 +55,14 @@ jobs:
             TAG="${GITHUB_REF#refs/tags/}"
           fi
           
-          # Only process better-db tags
-          if [[ ! "$TAG" =~ ^better-db-v ]]; then
-            echo "Not a better-db release tag, skipping..."
+          # Only process btst tags
+          if [[ ! "$TAG" =~ ^btst-v ]]; then
+            echo "Not a btst release tag, skipping..."
             exit 0
           fi
           
-          # Remove better-db- prefix
-          VERSION="${TAG#better-db-}"
+          # Remove btst- prefix
+          VERSION="${TAG#btst-}"
           
           if [[ "$VERSION" =~ -(next|canary|beta|rc|alpha) ]]; then
             # Extract pre-release tag (e.g., beta, rc, alpha)
@@ -76,21 +76,21 @@ jobs:
 
       - name: Copy README to each package
         run: |
-          # Copy main better-db README to each package for npm
-          cd packages/better-db
+          # Copy main btst README to each package for npm
+          cd packages/btst
           for dir in core cli plugins adapter-*; do
             if [ -d "$dir" ]; then
-              echo "Copying README to @better-db/${dir}..."
+              echo "Copying README to @btst/${dir}..."
               cp README.md "$dir/"
             fi
           done
 
       - name: Verify package contents before publishing
         run: |
-          cd packages/better-db
+          cd packages/btst
           for dir in core cli plugins adapter-*; do
             if [ -d "$dir" ]; then
-              echo "=== Checking @better-db/${dir} ==="
+              echo "=== Checking @btst/${dir} ==="
               cd "$dir"
               echo "Files to be published:"
               npm pack --dry-run
@@ -99,13 +99,13 @@ jobs:
             fi
           done
 
-      - name: Publish @better-db/* packages to npm
+      - name: Publish @btst/* packages to npm
         run: |
-          # Only publish better-db packages
-          cd packages/better-db
+          # Only publish btst packages
+          cd packages/btst
           for dir in core cli plugins adapter-*; do
             if [ -d "$dir" ]; then
-              echo "Publishing @better-db/${dir}..."
+              echo "Publishing @btst/${dir}..."
               cd "$dir"
               pnpm publish --access public --no-git-checks --tag ${{ steps.determine_npm_tag.outputs.npm_tag }}
               cd ..

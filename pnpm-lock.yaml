@@ -965,11 +965,11 @@ importers:
         specifier: ^3.5.18
         version: 3.5.19(typescript@5.9.2)
 
-  packages/better-db/adapter-drizzle:
+  packages/btst/adapter-drizzle:
     dependencies:
-      '@better-db/core':
+      '@btst/db':
         specifier: workspace:*
-        version: link:../core
+        version: link:../db
     devDependencies:
       better-auth:
         specifier: workspace:*
@@ -984,11 +984,11 @@ importers:
         specifier: 'catalog:'
         version: 3.6.1(sass@1.90.0)(typescript@5.9.2)(vue@3.5.19(typescript@5.9.2))
 
-  packages/better-db/adapter-kysely:
+  packages/btst/adapter-kysely:
     dependencies:
-      '@better-db/core':
+      '@btst/db':
         specifier: workspace:*
-        version: link:../core
+        version: link:../db
     devDependencies:
       better-auth:
         specifier: workspace:*
@@ -1003,11 +1003,11 @@ importers:
         specifier: 'catalog:'
         version: 3.6.1(sass@1.90.0)(typescript@5.9.2)(vue@3.5.19(typescript@5.9.2))
 
-  packages/better-db/adapter-memory:
+  packages/btst/adapter-memory:
     dependencies:
-      '@better-db/core':
+      '@btst/db':
         specifier: workspace:*
-        version: link:../core
+        version: link:../db
     devDependencies:
       better-auth:
         specifier: workspace:*
@@ -1022,11 +1022,11 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.4.0)(happy-dom@18.0.1)(jiti@2.6.0)(less@4.4.1)(lightningcss@1.30.1)(sass@1.90.0)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1)
 
-  packages/better-db/adapter-mongodb:
+  packages/btst/adapter-mongodb:
     dependencies:
-      '@better-db/core':
+      '@btst/db':
         specifier: workspace:*
-        version: link:../core
+        version: link:../db
       mongodb:
         specifier: ^6.0.0
         version: 6.18.0
@@ -1041,11 +1041,11 @@ importers:
         specifier: 'catalog:'
         version: 3.6.1(sass@1.90.0)(typescript@5.9.2)(vue@3.5.19(typescript@5.9.2))
 
-  packages/better-db/adapter-prisma:
+  packages/btst/adapter-prisma:
     dependencies:
-      '@better-db/core':
+      '@btst/db':
         specifier: workspace:*
-        version: link:../core
+        version: link:../db
       '@prisma/client':
         specifier: ^5.0.0
         version: 5.22.0(prisma@5.22.0)
@@ -1060,11 +1060,11 @@ importers:
         specifier: 'catalog:'
         version: 3.6.1(sass@1.90.0)(typescript@5.9.2)(vue@3.5.19(typescript@5.9.2))
 
-  packages/better-db/cli:
+  packages/btst/cli:
     dependencies:
-      '@better-db/core':
+      '@btst/db':
         specifier: workspace:*
-        version: link:../core
+        version: link:../db
       '@mrleebo/prisma-ast':
         specifier: ^0.13.0
         version: 0.13.0
@@ -1134,7 +1134,7 @@ importers:
         specifier: ^8.14.0
         version: 8.16.3
 
-  packages/better-db/core:
+  packages/btst/db:
     dependencies:
       '@better-auth/core':
         specifier: workspace:*
@@ -1156,11 +1156,11 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.4.0)(happy-dom@18.0.1)(jiti@2.6.0)(less@4.4.1)(lightningcss@1.30.1)(sass@1.90.0)(terser@5.44.0)(tsx@4.20.5)(yaml@2.8.1)
 
-  packages/better-db/plugins:
+  packages/btst/plugins:
     dependencies:
-      '@better-db/core':
+      '@btst/db':
         specifier: workspace:*
-        version: link:../core
+        version: link:../db
     devDependencies:
       typescript:
         specifier: 'catalog:'
@@ -17387,7 +17387,9 @@ snapshots:
       metro-runtime: 0.83.1
     transitivePeerDependencies:
       - '@babel/core'
+      - bufferutil
       - supports-color
+      - utf-8-validate
     optional: true
 
   '@react-native/normalize-colors@0.74.89': {}
