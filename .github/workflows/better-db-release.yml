@@ -78,7 +78,7 @@ jobs:
         run: |
           # Copy main btst README to each package for npm
           cd packages/btst
-          for dir in core cli plugins adapter-*; do
+          for dir in db cli plugins adapter-*; do
             if [ -d "$dir" ]; then
               echo "Copying README to @btst/${dir}..."
               cp README.md "$dir/"
@@ -88,7 +88,7 @@ jobs:
       - name: Verify package contents before publishing
         run: |
           cd packages/btst
-          for dir in core cli plugins adapter-*; do
+          for dir in db cli plugins adapter-*; do
             if [ -d "$dir" ]; then
               echo "=== Checking @btst/${dir} ==="
               cd "$dir"
@@ -103,7 +103,7 @@ jobs:
         run: |
           # Only publish btst packages
           cd packages/btst
-          for dir in core cli plugins adapter-*; do
+          for dir in db cli plugins adapter-*; do
             if [ -d "$dir" ]; then
               echo "Publishing @btst/${dir}..."
               cd "$dir"
