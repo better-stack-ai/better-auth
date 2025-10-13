@@ -1,6 +1,6 @@
 {
   "name": "@btst/adapter-drizzle",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Drizzle adapter for btst",
   "type": "module",
   "license": "MIT",
