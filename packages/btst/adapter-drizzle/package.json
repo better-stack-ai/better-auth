@@ -1,0 +1,59 @@
+{
+  "name": "@btst/adapter-drizzle",
+  "version": "1.0.0",
+  "description": "Drizzle adapter for better-db",
+  "type": "module",
+  "license": "MIT",
+  "homepage": "https://github.com/olliethedev/better-auth/tree/main/packages/better-db#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/olliethedev/better-auth",
+    "directory": "packages/better-db/adapter-drizzle"
+  },
+  "keywords": [
+    "drizzle",
+    "database",
+    "adapter",
+    "typescript",
+    "better-db"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "unbuild --clean",
+    "stub": "unbuild --stub",
+    "typecheck": "tsc --project tsconfig.json"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "dependencies": {
+    "@btst/db": "workspace:*"
+  },
+  "peerDependencies": {
+    "better-auth": ">=1.0.0",
+    "drizzle-orm": "^0.30.0"
+  },
+  "devDependencies": {
+    "better-auth": "workspace:*",
+    "drizzle-orm": "^0.38.2",
+    "typescript": "catalog:",
+    "unbuild": "catalog:"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ]
+}

@@ -1,9 +1,9 @@
 #!/usr/bin/env tsx
 /**
- * Sync Script: Copy files from better-auth to @better-db packages
+ * Sync Script: Copy files from better-auth to @btst packages
  *
  * This script vendors code from the upstream better-auth package into our
- * @better-db packages so we can publish them independently.
+ * @btst packages so we can publish them independently.
  *
  * Run: pnpm tsx scripts/sync-upstream.ts
  */
@@ -43,7 +43,7 @@ const COPY_CONFIGS: CopyConfig[] = [
 	// Kysely Adapter
 	{
 		from: "packages/better-auth/src/adapters/kysely-adapter",
-		to: "packages/better-db/adapter-kysely/src",
+		to: "packages/btst/adapter-kysely/src",
 		files: [
 			"kysely-adapter.ts",
 			"types.ts",
@@ -66,7 +66,7 @@ const COPY_CONFIGS: CopyConfig[] = [
 	// Drizzle Adapter
 	{
 		from: "packages/better-auth/src/adapters/drizzle-adapter",
-		to: "packages/better-db/adapter-drizzle/src",
+		to: "packages/btst/adapter-drizzle/src",
 		files: ["drizzle-adapter.ts"],
 		transformImports: (content) => {
 			return content
@@ -83,7 +83,7 @@ const COPY_CONFIGS: CopyConfig[] = [
 	// CLI Generators
 	{
 		from: "packages/cli/src/generators",
-		to: "packages/better-db/cli/src/generators",
+		to: "packages/btst/cli/src/generators",
 		files: ["drizzle.ts", "prisma.ts", "kysely.ts", "types.ts"],
 		transformImports: (content) => {
 			// These should already use better-auth package imports, so minimal changes

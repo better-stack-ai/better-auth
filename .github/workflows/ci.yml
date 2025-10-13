@@ -48,10 +48,10 @@ jobs:
                 TURBO_TEAM: ${{ vars.TURBO_TEAM || github.repository_owner }}
                 TURBO_CACHE: remote:rw
               run: |
-                # Build all packages including better-db
+                # Build all packages including btst
                 pnpm build
-                # Also build better-db packages (not included in default filter)
-                pnpm build --filter "@better-db/*"
+                # Also build btst packages (not included in default filter)
+                pnpm build --filter "@btst/*"
 
             - name: Start Docker Containers
               run: |
@@ -74,8 +74,8 @@ jobs:
               run: |
                 # Run all package tests
                 pnpm test
-                # Also run better-db tests (not included in default filter)
-                pnpm turbo test --filter "@better-db/*" -- --run
+                # Also run btst tests (not included in default filter)
+                pnpm turbo test --filter "@btst/*" -- --run
 
             - name: Typecheck
               env:
