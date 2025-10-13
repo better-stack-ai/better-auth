@@ -1,6 +1,6 @@
 {
   "name": "@btst/plugins",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Plugin utilities and common plugins for btst",
   "type": "module",
   "license": "MIT",

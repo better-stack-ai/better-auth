@@ -1,6 +1,6 @@
 {
   "name": "@btst/cli",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "CLI for btst schema generation and migration",
   "type": "module",
   "license": "MIT",

@@ -1,6 +1,6 @@
 {
   "name": "@btst/adapter-mongodb",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "MongoDB adapter for btst",
   "type": "module",
   "license": "MIT",
