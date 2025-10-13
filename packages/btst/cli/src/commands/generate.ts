@@ -70,9 +70,7 @@ async function generateAction(options: GenerateOptions) {
 				logger.info(
 					"\nExamples:\n  DATABASE_URL=sqlite:./dev.db npx btst generate ...",
 				);
-				logger.info(
-					"  npx btst generate --database-url=sqlite:./dev.db ...",
-				);
+				logger.info("  npx btst generate --database-url=sqlite:./dev.db ...");
 				process.exit(1);
 			}
 

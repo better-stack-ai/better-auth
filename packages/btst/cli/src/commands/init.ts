@@ -42,9 +42,7 @@ async function initAction(options: InitOptions) {
 		console.log();
 		console.log(chalk.yellow("Example usage:"));
 		console.log(
-			chalk.gray(
-				"  btst generate --orm=prisma --output=prisma/schema.prisma",
-			),
+			chalk.gray("  btst generate --orm=prisma --output=prisma/schema.prisma"),
 		);
 	} catch (error: any) {
 		console.error(chalk.red("❌ Initialization failed:"), error.message);
