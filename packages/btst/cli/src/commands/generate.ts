@@ -68,10 +68,10 @@ async function generateAction(options: GenerateOptions) {
 				logger.error("Kysely generation requires database connection");
 				logger.info("Set DATABASE_URL env var or use --database-url flag");
 				logger.info(
-					"\nExamples:\n  DATABASE_URL=sqlite:./dev.db npx better-db generate ...",
+					"\nExamples:\n  DATABASE_URL=sqlite:./dev.db npx btst generate ...",
 				);
 				logger.info(
-					"  npx better-db generate --database-url=sqlite:./dev.db ...",
+					"  npx btst generate --database-url=sqlite:./dev.db ...",
 				);
 				process.exit(1);
 			}
@@ -207,7 +207,7 @@ async function generateAction(options: GenerateOptions) {
 // Command definition with REQUIRED options
 export const generateCommand = new Command("generate")
 	.description("Generate database schema files for your ORM")
-	.requiredOption("--config <path>", "Path to better-db schema file")
+	.requiredOption("--config <path>", "Path to btst schema file")
 	.requiredOption("--output <path>", "Output path for generated schema")
 	.requiredOption("--orm <orm>", "Target ORM: prisma, drizzle, or kysely")
 	.option("--cwd <dir>", "Working directory", process.cwd())

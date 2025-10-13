@@ -209,7 +209,7 @@ async function migrateAction(options: MigrateOptions) {
 // Command definition with REQUIRED options
 export const migrateCommand = new Command("migrate")
 	.description("Run database migrations (Kysely only)")
-	.requiredOption("--config <path>", "Path to better-db schema file")
+	.requiredOption("--config <path>", "Path to @btst/db schema file")
 	.option(
 		"--output <path>",
 		"Output path for migration SQL (if not set, runs migrations directly)",

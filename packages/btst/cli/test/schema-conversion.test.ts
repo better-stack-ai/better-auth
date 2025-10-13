@@ -2,11 +2,11 @@ import { describe, it, expect } from "vitest";
 import { defineDb, createDbPlugin } from "@btst/db";
 
 /**
- * Tests for better-db schema definition
+ * Tests for btst schema definition
  * (ORM generation is tested in generate-all-orms.test.ts)
  */
-describe("better-db schema definition", () => {
-	it("should create better-db schema correctly", () => {
+describe("@btst/db schema definition", () => {
+	it("should create @btst/db schema correctly", () => {
 		const db = defineDb({
 			post: {
 				modelName: "post",

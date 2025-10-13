@@ -1,8 +1,8 @@
-// Integration test to verify the better-db API works as expected
+// Integration test to verify the btst API works as expected
 import { describe, it, expect } from "vitest";
 import { defineDb, createDbPlugin } from "../src/index";
 
-describe("better-db integration", () => {
+describe("@btst/db integration", () => {
 	it("should create schema with defineDb", () => {
 		const blogDb = defineDb({
 			post: {
@@ -112,8 +112,8 @@ describe("better-db integration", () => {
 		const postTable = schema.post;
 
 		expect(postTable).toBeDefined();
-		expect(postTable.fields.title.required).toBe(true);
-		expect(postTable.fields.email.unique).toBe(true);
+		expect(postTable?.fields?.title?.required).toBe(true);
+		expect(postTable?.fields?.email?.unique).toBe(true);
 	});
 
 	it("should support plugins via options", () => {

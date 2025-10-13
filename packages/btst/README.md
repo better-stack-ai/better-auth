@@ -76,11 +76,11 @@ Generate and run migrations:
 
 ```bash
 # Generate Prisma schema
-npx better-db generate --config=db.ts --orm=prisma --output=schema.prisma
+npx btst generate --config=db.ts --orm=prisma --output=schema.prisma
 
 # Or for Kysely (requires database connection)
-DATABASE_URL=sqlite:./dev.db npx better-db generate --config=db.ts --orm=kysely --output=migrations/schema.sql
-# Or: npx better-db generate --config=db.ts --orm=kysely --output=migrations/schema.sql --database-url=sqlite:./dev.db
+DATABASE_URL=sqlite:./dev.db npx btst generate --config=db.ts --orm=kysely --output=migrations/schema.sql
+# Or: npx btst generate --config=db.ts --orm=kysely --output=migrations/schema.sql --database-url=sqlite:./dev.db
 
 # Run migrations
 npx prisma migrate dev
@@ -113,28 +113,28 @@ const posts = await adapter.findMany({
 ### Initialize
 
 ```bash
-npx better-db init [--output=db.ts]
+npx btst init [--output=db.ts]
 ```
 
 ### Generate
 
 ```bash
 # Prisma
-npx better-db generate --config=db.ts --orm=prisma --output=schema.prisma
+npx btst generate --config=db.ts --orm=prisma --output=schema.prisma
 
 # Drizzle
-npx better-db generate --config=db.ts --orm=drizzle --output=src/db/schema.ts
+npx btst generate --config=db.ts --orm=drizzle --output=src/db/schema.ts
 
 # Kysely (requires database connection for introspection)
 # Using DATABASE_URL environment variable
-DATABASE_URL=sqlite:./dev.db npx better-db generate --config=db.ts --orm=kysely --output=migrations/schema.sql
+DATABASE_URL=sqlite:./dev.db npx btst generate --config=db.ts --orm=kysely --output=migrations/schema.sql
 
 # Or using --database-url flag
-npx better-db generate --config=db.ts --orm=kysely --output=migrations/schema.sql --database-url=sqlite:./dev.db
-npx better-db generate --config=db.ts --orm=kysely --output=migrations/schema.sql --database-url=postgres://user:pass@localhost:5432/db
+npx btst generate --config=db.ts --orm=kysely --output=migrations/schema.sql --database-url=sqlite:./dev.db
+npx btst generate --config=db.ts --orm=kysely --output=migrations/schema.sql --database-url=postgres://user:pass@localhost:5432/db
 
 # Filter auth tables (User, Session, Account, Verification)
-npx better-db generate --config=db.ts --orm=prisma --output=schema.prisma --filter-auth
+npx btst generate --config=db.ts --orm=prisma --output=schema.prisma --filter-auth
 ```
 
 ### Migrate
@@ -142,17 +142,17 @@ npx better-db generate --config=db.ts --orm=prisma --output=schema.prisma --filt
 ```bash
 # Kysely only - for Prisma/Drizzle use their native tools
 # Using DATABASE_URL environment variable or --database-url param
-DATABASE_URL=sqlite:./dev.db npx better-db migrate --config=db.ts
+DATABASE_URL=sqlite:./dev.db npx btst migrate --config=db.ts
 
 # Or using --database-url flag
-npx better-db migrate --config=db.ts --database-url=sqlite:./dev.db
-npx better-db migrate --config=db.ts --database-url=postgres://user:pass@localhost:5432/db
+npx btst migrate --config=db.ts --database-url=sqlite:./dev.db
+npx btst migrate --config=db.ts --database-url=postgres://user:pass@localhost:5432/db
 
 # Generate SQL to file instead of running migrations
-npx better-db migrate --config=db.ts --output=migrations.sql --database-url=sqlite:./dev.db
+npx btst migrate --config=db.ts --output=migrations.sql --database-url=sqlite:./dev.db
 
 # Filter auth tables (User, Session, Account, Verification)
-npx better-db migrate --config=db.ts --output=migrations.sql --filter-auth --database-url=sqlite:./dev.db
+npx btst migrate --config=db.ts --output=migrations.sql --filter-auth --database-url=sqlite:./dev.db
 ```
 
 ## Field Types
@@ -322,7 +322,7 @@ Update CLI:
 npx @better-auth/cli generate
 
 # After
-npx better-db generate
+npx btst generate
 ```
 
 ## Examples

@@ -1,14 +1,14 @@
 {
   "name": "@btst/cli",
   "version": "1.0.0",
-  "description": "CLI for better-db schema generation and migration",
+  "description": "CLI for btst schema generation and migration",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://github.com/olliethedev/better-auth/tree/main/packages/better-db#readme",
+  "homepage": "https://github.com/olliethedev/better-auth/tree/main/packages/btst#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/olliethedev/better-auth",
-    "directory": "packages/better-db/cli"
+    "directory": "packages/btst/cli"
   },
   "keywords": [
     "cli",
@@ -16,7 +16,7 @@
     "schema",
     "migration",
     "typescript",
-    "better-db"
+    "btst"
   ],
   "publishConfig": {
     "access": "public",
@@ -35,8 +35,8 @@
   "main": "./dist/index.mjs",
   "exports": "./dist/index.mjs",
   "bin": {
-    "better-db": "./dist/index.mjs",
-    "@btst/cli": "./dist/index.mjs"
+    "@btst/cli": "./dist/index.mjs",
+    "btst": "./dist/index.mjs"
   },
   "dependencies": {
     "@btst/db": "workspace:*",
