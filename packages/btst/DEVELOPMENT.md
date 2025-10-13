@@ -13,8 +13,8 @@ Better DB is a **thin wrapper** around Better Auth's database layer. This allows
 ### Package Structure
 
 ```
-packages/better-db/
-├── core/                   # @btst/db - DSL and types
+packages/btst/
+├── db/                   # @btst/db - DSL and types
 ├── cli/                    # @btst/cli - Schema generation
 ├── adapter-*/              # @btst/adapter-* - Adapter wrappers
 ├── plugins/                # @btst/plugins - Common plugins
@@ -74,18 +74,18 @@ Only add what's necessary for the database-focused API. Everything else should b
 
 ## Making Changes
 
-### Core (`packages/better-db/core/`)
+### Core (`packages/btst/db/`)
 
 - DSL, types, plugin system
 - Ensure compatibility with Better Auth schema format
 - Update exports in `src/index.ts`
 
-### Adapters (`packages/better-db/adapter-*/`)
+### Adapters (`packages/btst/adapter-*/`)
 
 - Should only contain re-exports
 - Update `src/index.ts` if Better Auth changes exports
 
-### CLI (`packages/better-db/cli/`)
+### CLI (`packages/btst/cli/`)
 
 - Wraps Better Auth CLI
 - Filters auth domain models
@@ -95,7 +95,7 @@ Only add what's necessary for the database-focused API. Everything else should b
   - `src/commands/generate.ts` - Schema generation
   - `src/commands/migrate.ts` - Migration wrapper
 
-### Plugins (`packages/better-db/plugins/`)
+### Plugins (`packages/btst/plugins/`)
 
 - Add reusable table definitions
 - Follow Better Auth plugin schema format
@@ -129,8 +129,8 @@ Workflows use repository conditionals to prevent conflicts:
 - `e2e.yml` - integration tests
 
 **Fork-only:**
-- `better-db-release.yml` - Publishes `@btst/*` packages
-  - Triggered by `better-db-v*` tags
+- `btst-release.yml` - Publishes `@btst/*` packages
+  - Triggered by `btst-v*` tags
   - Uses `if: github.repository != 'better-auth/better-auth'`
 
 ### When Better Auth Updates
@@ -153,8 +153,8 @@ pnpm test --filter "@btst/db"
 pnpm test --filter "@btst/cli"
 
 # Manual CLI testing
-npx better-db init --output=test-schema.ts
-npx better-db generate --config=test-schema.ts --orm=prisma --yes
+npx btst init --output=test-schema.ts
+npx btst generate --config=test-schema.ts --orm=prisma --yes
 ```
 
 ### Test Coverage
@@ -174,27 +174,27 @@ npx better-db generate --config=test-schema.ts --orm=prisma --yes
 
 1. Update versions:
    ```bash
-   cd packages/better-db
+   cd packages/btst
    pnpm version <major|minor|patch> --workspace
    git add . && git commit -m "chore: bump to v1.x.x" && git push
    ```
 
 2. Create release at `github.com/[user]/better-auth/releases/new`
-   - Tag: `better-db-v1.4.0`
+   - Tag: `btst-v1.4.0`
    - Click "Create new tag on publish"
 
 **Method 2: CLI**
 
 ```bash
 # Update versions
-cd packages/better-db
+cd packages/btst
 pnpm version <major|minor|patch> --workspace
 
 # Commit and tag
 git add . && git commit -m "chore: release v1.4.0"
 git push
-git tag better-db-v1.4.0
-git push origin better-db-v1.4.0
+git tag btst-v1.4.0
+git push origin btst-v1.4.0
 ```
 
 The GitHub Action will automatically:
@@ -204,8 +204,8 @@ The GitHub Action will automatically:
 - Publish to npm with correct tag
 
 **Tag Conventions:**
-- `better-db-v1.4.0` → `latest`
-- `better-db-v1.4.0-beta.1` → `beta`
+- `btst-v1.4.0` → `latest`
+- `btst-v1.4.0-beta.1` → `beta`
 - Supported: `alpha`, `beta`, `rc`, `canary`, `next`
 
 ### Manual Release
@@ -215,7 +215,7 @@ The GitHub Action will automatically:
 pnpm build --filter "@btst/*"
 
 # Publish each package
-cd packages/better-db/core
+cd packages/btst/db
 pnpm publish --access public --tag latest
 # Repeat for cli, plugins, and adapters
 ```
@@ -231,7 +231,7 @@ pnpm publish --access public --tag latest
 
 ## README Management
 
-All `@btst/*` packages share `packages/better-db/README.md`:
+All `@btst/*` packages share `packages/btst/README.md`:
 
 - During release, README is copied to each package directory
 - Each `package.json` includes `"README.md"` in `files` array

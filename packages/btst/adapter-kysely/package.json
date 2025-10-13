@@ -1,21 +1,21 @@
 {
   "name": "@btst/adapter-kysely",
-  "version": "1.0.0",
-  "description": "Kysely adapter for better-db",
+  "version": "1.0.1",
+  "description": "Kysely adapter for btst",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://github.com/olliethedev/better-auth/tree/main/packages/better-db#readme",
+  "homepage": "https://github.com/olliethedev/better-auth/tree/main/packages/btst#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/olliethedev/better-auth",
-    "directory": "packages/better-db/adapter-kysely"
+    "directory": "packages/btst/adapter-kysely"
   },
   "keywords": [
     "kysely",
     "database",
     "adapter",
     "typescript",
-    "better-db"
+    "btst"
   ],
   "publishConfig": {
     "access": "public"

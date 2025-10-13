@@ -1,21 +1,21 @@
 {
   "name": "@btst/adapter-drizzle",
-  "version": "1.0.0",
-  "description": "Drizzle adapter for better-db",
+  "version": "1.0.1",
+  "description": "Drizzle adapter for btst",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://github.com/olliethedev/better-auth/tree/main/packages/better-db#readme",
+  "homepage": "https://github.com/olliethedev/better-auth/tree/main/packages/btst#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/olliethedev/better-auth",
-    "directory": "packages/better-db/adapter-drizzle"
+    "directory": "packages/btst/adapter-drizzle"
   },
   "keywords": [
     "drizzle",
     "database",
     "adapter",
     "typescript",
-    "better-db"
+    "btst"
   ],
   "publishConfig": {
     "access": "public"

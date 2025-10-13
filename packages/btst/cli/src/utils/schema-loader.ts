@@ -3,7 +3,7 @@ import fs from "fs/promises";
 import { logger } from "./logger";
 
 /**
- * Loads and validates a better-db schema file
+ * Loads and validates a btst schema file
  * Returns the schema object with getSchema method
  */
 export async function loadBetterDbSchema(schemaPath: string) {
@@ -12,7 +12,7 @@ export async function loadBetterDbSchema(schemaPath: string) {
 		await fs.access(schemaPath);
 	} catch {
 		logger.error(`Schema file not found: ${schemaPath}`);
-		logger.info("Run `better-db init` to create one.");
+		logger.info("Run `btst init` to create one.");
 		process.exit(1);
 	}
 
@@ -33,7 +33,7 @@ export async function loadBetterDbSchema(schemaPath: string) {
 		process.exit(1);
 	}
 
-	// 3. Validate it's a better-db schema
+	// 3. Validate it's a btst schema
 	if (!dbSchema?.getSchema) {
 		logger.error("Invalid schema: must export defineDb() result");
 		process.exit(1);

@@ -40,7 +40,7 @@ jobs:
           
           # Verify dist folders exist
           echo "Checking dist folders..."
-          ls -la packages/btst/core/dist/ || echo "❌ core/dist missing!"
+          ls -la packages/btst/db/dist/ || echo "❌ db/dist missing!"
           ls -la packages/btst/cli/dist/ || echo "❌ cli/dist missing!"
           ls -la packages/btst/plugins/dist/ || echo "❌ plugins/dist missing!"
 

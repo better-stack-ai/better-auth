@@ -1,20 +1,20 @@
 {
   "name": "@btst/db",
-  "version": "1.0.0",
-  "description": "Core database utilities and schema definition for better-db",
+  "version": "1.0.1",
+  "description": "Core database utilities and schema definition for btst",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://github.com/olliethedev/better-auth/tree/main/packages/better-db#readme",
+  "homepage": "https://github.com/olliethedev/better-auth/tree/main/packages/btst#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/olliethedev/better-auth",
-    "directory": "packages/better-db/core"
+    "directory": "packages/btst/db"
   },
   "keywords": [
     "database",
     "schema",
     "typescript",
-    "better-db",
+    "btst",
     "orm-agnostic"
   ],
   "publishConfig": {

@@ -11,7 +11,7 @@ interface InitOptions {
 async function initAction(options: InitOptions) {
 	try {
 		console.log(chalk.blue("🚀 Better DB Init"));
-		console.log(chalk.gray("Creating a new better-db schema..."));
+		console.log(chalk.gray("Creating a new @btst/db schema..."));
 
 		const outputPath = options.output || path.join(options.cwd, "db.ts");
 
@@ -36,15 +36,13 @@ async function initAction(options: InitOptions) {
 		console.log(chalk.gray("1. Edit the schema file to define your tables"));
 		console.log(
 			chalk.gray(
-				"2. Run `better-db generate --orm=<prisma|drizzle|kysely>` to generate database files",
+				"2. Run `btst generate --orm=<prisma|drizzle|kysely>` to generate database files",
 			),
 		);
 		console.log();
 		console.log(chalk.yellow("Example usage:"));
 		console.log(
-			chalk.gray(
-				"  better-db generate --orm=prisma --output=prisma/schema.prisma",
-			),
+			chalk.gray("  btst generate --orm=prisma --output=prisma/schema.prisma"),
 		);
 	} catch (error: any) {
 		console.error(chalk.red("❌ Initialization failed:"), error.message);
@@ -174,7 +172,7 @@ export default db;
 }
 
 export const initCommand = new Command("init")
-	.description("Initialize a new better-db schema file")
+	.description("Initialize a new btst schema file")
 	.option("--cwd <dir>", "Current working directory", process.cwd())
 	.option("--output <path>", "Output path for schema file", "db.ts")
 	.action(initAction);
