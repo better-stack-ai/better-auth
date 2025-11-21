@@ -133,8 +133,9 @@ DATABASE_URL=sqlite:./dev.db npx btst generate --config=db.ts --orm=kysely --out
 npx btst generate --config=db.ts --orm=kysely --output=migrations/schema.sql --database-url=sqlite:./dev.db
 npx btst generate --config=db.ts --orm=kysely --output=migrations/schema.sql --database-url=postgres://user:pass@localhost:5432/db
 
-# Filter auth tables (User, Session, Account, Verification)
-npx btst generate --config=db.ts --orm=prisma --output=schema.prisma --filter-auth
+# By default, auth tables (User, Session, Account, Verification) are filtered out
+# To include them, add --include-better-auth flag
+npx btst generate --config=db.ts --orm=prisma --output=schema.prisma --include-better-auth
 ```
 
 ### Migrate
@@ -151,8 +152,9 @@ npx btst migrate --config=db.ts --database-url=postgres://user:pass@localhost:54
 # Generate SQL to file instead of running migrations
 npx btst migrate --config=db.ts --output=migrations.sql --database-url=sqlite:./dev.db
 
-# Filter auth tables (User, Session, Account, Verification)
-npx btst migrate --config=db.ts --output=migrations.sql --filter-auth --database-url=sqlite:./dev.db
+# By default, auth tables (User, Session, Account, Verification) are filtered out
+# To include them, add --include-better-auth flag
+npx btst migrate --config=db.ts --output=migrations.sql --include-better-auth --database-url=sqlite:./dev.db
 ```
 
 ## Field Types

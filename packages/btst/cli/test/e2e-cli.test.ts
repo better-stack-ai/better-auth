@@ -100,6 +100,57 @@ export default defineDb({
 		expect(content).toContain("export const article");
 	}, 10000);
 
+	it("should support named export 'dbSchema' pattern", async () => {
+		await fs.mkdir(testDir, { recursive: true });
+
+		// Create a schema file using named export pattern like betterStack
+		const namedExportSchema = path.join(testDir, "named-export-db.ts");
+		await fs.writeFile(
+			namedExportSchema,
+			`
+import { defineDb } from "@btst/db";
+
+// Simulate betterStack pattern with multiple named exports
+const dbSchema = defineDb({
+  notification: {
+    modelName: "notification",
+    fields: {
+      message: { type: "string", required: true },
+      read: { type: "boolean", defaultValue: false },
+    },
+  },
+});
+
+const handler = () => {}; // Dummy handler
+
+export { handler, dbSchema };
+`,
+			"utf8",
+		);
+
+		const outputPath = path.join(testDir, "named-export-schema.prisma");
+
+		// Run generate command with named export schema
+		const { stdout } = await execAsync(
+			`node ./dist/index.mjs generate --config=${namedExportSchema} --orm=prisma --output=${outputPath} --yes`,
+			{ cwd: process.cwd() },
+		);
+
+		// Verify output file was created
+		const fileExists = await fs
+			.access(outputPath)
+			.then(() => true)
+			.catch(() => false);
+		expect(fileExists).toBe(true);
+
+		// Verify content contains the notification model
+		const content = await fs.readFile(outputPath, "utf8");
+		expect(content).toContain("datasource db");
+		expect(content).toContain("model Notification");
+		expect(content).toContain("message");
+		expect(content).toContain("read");
+	}, 10000);
+
 	it("should fail Kysely without DATABASE_URL", async () => {
 		await fs.mkdir(testDir, { recursive: true });
 		await fs.writeFile(
@@ -494,7 +545,74 @@ export default defineDb({
 		).toBe(true);
 	}, 30000);
 
-	it("should filter auth tables with --filter-auth flag", async () => {
+	it("should support named export 'dbSchema' pattern with migrate command", async () => {
+		await fs.mkdir(testDir, { recursive: true });
+
+		// Create a schema file using named export pattern
+		const namedExportSchema = path.join(testDir, "migrate-named-export.ts");
+		await fs.writeFile(
+			namedExportSchema,
+			`
+import { defineDb } from "@btst/db";
+
+// Simulate betterStack pattern with multiple named exports
+const dbSchema = defineDb({
+  alert: {
+    modelName: "alert",
+    fields: {
+      title: { type: "string", required: true },
+      priority: { type: "number", required: true },
+    },
+  },
+});
+
+const handler = () => {}; // Dummy handler
+
+export { handler, dbSchema };
+`,
+			"utf8",
+		);
+
+		const outputPath = path.join(testDir, "migrate-named-export.sql");
+
+		// Clean database first
+		const { Pool } = await import("pg");
+		const pool = new Pool({
+			connectionString: "postgres://user:password@localhost:5433/better_auth",
+		});
+		await pool.query(
+			'DROP TABLE IF EXISTS alert, verification, account, session, "user", "rateLimit" CASCADE',
+		);
+		await pool.end();
+
+		// Run migrate command with named export schema
+		const { stdout } = await execAsync(
+			`node ./dist/index.mjs migrate --config=${namedExportSchema} --output=${outputPath} --yes`,
+			{
+				cwd: process.cwd(),
+				env: {
+					...process.env,
+					DATABASE_URL: "postgres://user:password@localhost:5433/better_auth",
+				},
+			},
+		);
+
+		// Verify output file was created
+		const fileExists = await fs
+			.access(outputPath)
+			.then(() => true)
+			.catch(() => false);
+		expect(fileExists).toBe(true);
+
+		// Verify content contains the alert table
+		const content = await fs.readFile(outputPath, "utf8");
+		expect(content.toLowerCase()).toContain("create table");
+		expect(content).toContain("alert");
+		expect(content).toContain("title");
+		expect(content).toContain("priority");
+	}, 30000);
+
+	it("should filter auth tables by default", async () => {
 		await fs.mkdir(testDir, { recursive: true });
 		await fs.writeFile(
 			testSchema,
@@ -516,13 +634,13 @@ export default defineDb({
 		const outputPath = path.join(testDir, "schema.prisma");
 
 		await execAsync(
-			`node ./dist/index.mjs generate --config=${testSchema} --orm=prisma --output=${outputPath} --filter-auth --yes`,
+			`node ./dist/index.mjs generate --config=${testSchema} --orm=prisma --output=${outputPath} --yes`,
 			{ cwd: process.cwd() },
 		);
 
 		const content = await fs.readFile(outputPath, "utf8");
 
-		// Should NOT have auth tables
+		// Should NOT have auth tables (filtered by default)
 		expect(content).not.toContain("model User");
 		expect(content).not.toContain("model Session");
 
@@ -530,7 +648,43 @@ export default defineDb({
 		expect(content).toContain("model Custom");
 	}, 10000);
 
-	it("should not create empty file when filtering removes all content (Kysely)", async () => {
+	it("should include auth tables with --include-better-auth flag", async () => {
+		await fs.mkdir(testDir, { recursive: true });
+		await fs.writeFile(
+			testSchema,
+			`
+import { defineDb } from "@btst/db";
+
+export default defineDb({
+  custom: {
+    modelName: "custom",
+    fields: {
+      data: { type: "string", required: true },
+    },
+  },
+});
+`,
+			"utf8",
+		);
+
+		const outputPath = path.join(testDir, "schema-with-auth.prisma");
+
+		await execAsync(
+			`node ./dist/index.mjs generate --config=${testSchema} --orm=prisma --output=${outputPath} --include-better-auth --yes`,
+			{ cwd: process.cwd() },
+		);
+
+		const content = await fs.readFile(outputPath, "utf8");
+
+		// Should have auth tables with --include-better-auth flag
+		expect(content).toContain("model User");
+		expect(content).toContain("model Session");
+
+		// Should also have custom table
+		expect(content).toContain("model Custom");
+	}, 10000);
+
+	it("should not create empty file when filtering removes all content by default (Kysely)", async () => {
 		await fs.mkdir(testDir, { recursive: true });
 		await fs.writeFile(
 			testSchema,
@@ -586,10 +740,10 @@ export default defineDb({
 		}
 		await pool.end();
 
-		// Now run with --filter-auth when only auth tables would need to be created (but they're already there)
-		// This simulates the user's scenario where custom tables exist and they run generate with --filter-auth
+		// Now run when only auth tables would need to be created (but they're already there)
+		// This simulates the user's scenario where custom tables exist and they run generate (filtering by default)
 		const { stdout } = await execAsync(
-			`node ./dist/index.mjs generate --config=${testSchema} --orm=kysely --output=${outputPath} --filter-auth --yes`,
+			`node ./dist/index.mjs generate --config=${testSchema} --orm=kysely --output=${outputPath} --yes`,
 			{
 				cwd: process.cwd(),
 				env: {
@@ -610,7 +764,7 @@ export default defineDb({
 		expect(fileExists).toBe(false);
 	}, 20000);
 
-	it("should filter auth tables from migrate command output with --filter-auth", async () => {
+	it("should filter auth tables from migrate command output by default", async () => {
 		await fs.mkdir(testDir, { recursive: true });
 		await fs.writeFile(
 			testSchema,
@@ -650,9 +804,9 @@ export default defineDb({
 		);
 		await pool.end();
 
-		// Run migrate with --filter-auth and --output
+		// Run migrate with --output (filtering by default)
 		const { stdout } = await execAsync(
-			`node ./dist/index.mjs migrate --config=${testSchema} --output=${outputPath} --filter-auth --yes`,
+			`node ./dist/index.mjs migrate --config=${testSchema} --output=${outputPath} --yes`,
 			{
 				cwd: process.cwd(),
 				env: {
@@ -695,7 +849,7 @@ export default defineDb({
 		expect(content.trim()).toBe(expected.trim());
 	}, 30000);
 
-	it("should not create file when migrate --filter-auth removes all content", async () => {
+	it("should not create file when migrate filtering removes all content by default", async () => {
 		await fs.mkdir(testDir, { recursive: true });
 		await fs.writeFile(
 			testSchema,
@@ -749,9 +903,9 @@ export default defineDb({
 		}
 		await pool.end();
 
-		// Now run migrate with --filter-auth (should be no changes since custom table exists)
+		// Now run migrate (filtering by default - should be no changes since custom table exists)
 		const { stdout } = await execAsync(
-			`node ./dist/index.mjs migrate --config=${testSchema} --output=${outputPath} --filter-auth --yes`,
+			`node ./dist/index.mjs migrate --config=${testSchema} --output=${outputPath} --yes`,
 			{
 				cwd: process.cwd(),
 				env: {
@@ -772,7 +926,7 @@ export default defineDb({
 		expect(fileExists).toBe(false);
 	}, 30000);
 
-	it("should show filtered pending migrations in migrate command", async () => {
+	it("should show filtered pending migrations by default in migrate command", async () => {
 		await fs.mkdir(testDir, { recursive: true });
 		await fs.writeFile(
 			testSchema,
@@ -811,9 +965,9 @@ export default defineDb({
 
 		const outputPath = path.join(testDir, "pending.sql");
 
-		// Run migrate with --filter-auth to see pending migrations
+		// Run migrate to see pending migrations (filtering by default)
 		const { stdout } = await execAsync(
-			`node ./dist/index.mjs migrate --config=${testSchema} --output=${outputPath} --filter-auth --yes`,
+			`node ./dist/index.mjs migrate --config=${testSchema} --output=${outputPath} --yes`,
 			{
 				cwd: process.cwd(),
 				env: {
@@ -852,7 +1006,7 @@ export default defineDb({
 		expect(content.trim()).toBe(expected.trim());
 	}, 30000);
 
-	it("should filter auth tables from migrate command in MySQL", async () => {
+	it("should filter auth tables from migrate command by default in MySQL", async () => {
 		await fs.mkdir(testDir, { recursive: true });
 		await fs.writeFile(
 			testSchema,
@@ -888,9 +1042,9 @@ export default defineDb({
 		);
 		await connection.end();
 
-		// Run migrate with --filter-auth for MySQL
+		// Run migrate for MySQL (filtering by default)
 		const { stdout } = await execAsync(
-			`node ./dist/index.mjs migrate --config=${testSchema} --output=${outputPath} --filter-auth --yes`,
+			`node ./dist/index.mjs migrate --config=${testSchema} --output=${outputPath} --yes`,
 			{
 				cwd: process.cwd(),
 				env: {

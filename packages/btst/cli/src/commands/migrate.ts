@@ -17,7 +17,7 @@ interface MigrateOptions {
 	databaseUrl?: string; // Optional: for Kysely connection
 	cwd?: string;
 	yes?: boolean;
-	filterAuth?: boolean; // Filter out Better Auth default tables
+	includeBetterAuth?: boolean; // Include Better Auth default tables (filtered by default)
 }
 
 async function migrateAction(options: MigrateOptions) {
@@ -85,8 +85,8 @@ async function migrateAction(options: MigrateOptions) {
 			process.exit(1);
 		}
 
-		// 7. Filter auth tables if requested
-		if (options.filterAuth) {
+		// 7. Filter auth tables by default (unless --include-better-auth is passed)
+		if (!options.includeBetterAuth) {
 			toBeCreated = toBeCreated.filter(
 				(t) => !DEFAULT_AUTH_TABLES.includes(t.table.toLowerCase()),
 			);
@@ -141,8 +141,8 @@ async function migrateAction(options: MigrateOptions) {
 			try {
 				let sql = await compileMigrations();
 
-				// Filter auth tables from SQL if requested
-				if (options.filterAuth) {
+				// Filter auth tables from SQL by default (unless --include-better-auth is passed)
+				if (!options.includeBetterAuth) {
 					sql = filterAuthTables(sql, "kysely");
 
 					// Check if filtering removed all content
@@ -221,7 +221,7 @@ export const migrateCommand = new Command("migrate")
 	.option("--cwd <dir>", "Working directory", process.cwd())
 	.option("-y, --yes", "Skip confirmation prompts")
 	.option(
-		"--filter-auth",
-		"Filter out Better Auth default tables (user, session, etc.)",
+		"--include-better-auth",
+		"Include Better Auth default tables (user, session, etc.) - filtered by default",
 	)
 	.action(migrateAction);
