@@ -73,7 +73,7 @@ jobs:
                 TURBO_CACHE: remote:rw
               run: |
                 # Run all package tests
-                # pnpm test
+                pnpm test
                 # Also run btst tests (not included in default filter)
                 pnpm turbo test --filter "@btst/*" -- --run
 
