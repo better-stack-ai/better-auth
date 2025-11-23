@@ -21,7 +21,7 @@ interface GenerateOptions {
 	orm: "prisma" | "drizzle" | "kysely"; // REQUIRED
 	cwd?: string;
 	yes?: boolean;
-	filterAuth?: boolean; // Filter out Better Auth default tables
+	includeBetterAuth?: boolean; // Include Better Auth default tables (filtered by default)
 	databaseUrl?: string; // Optional: for Kysely connection
 }
 
@@ -143,8 +143,8 @@ async function generateAction(options: GenerateOptions) {
 			return;
 		}
 
-		// 7. Filter auth tables if requested
-		if (options.filterAuth && result.code) {
+		// 7. Filter auth tables by default (unless --include-better-auth is passed)
+		if (!options.includeBetterAuth && result.code) {
 			result.code = filterAuthTables(result.code, options.orm);
 			logger.info(
 				"🧹 Filtered out Better Auth default tables (User, Session, etc.)",
@@ -211,8 +211,8 @@ export const generateCommand = new Command("generate")
 	.option("--cwd <dir>", "Working directory", process.cwd())
 	.option("-y, --yes", "Skip confirmation prompts")
 	.option(
-		"--filter-auth",
-		"Filter out Better Auth default tables (User, Session, etc.)",
+		"--include-better-auth",
+		"Include Better Auth default tables (User, Session, etc.) - filtered by default",
 	)
 	.option(
 		"--database-url <url>",
