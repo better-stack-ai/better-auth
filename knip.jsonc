@@ -94,5 +94,11 @@
 		],
 		"entry": ["**/*.test.ts", "**/*.spec.ts"]
 	},
-	"ignoreWorkspaces": ["demo/**", "docs/**", "e2e/**", "scripts/**", "packages/btst/**"]
+	"ignoreWorkspaces": [
+		"demo/**",
+		"docs/**",
+		"e2e/**",
+		"scripts/**",
+		"packages/btst/**"
+	]
 }
