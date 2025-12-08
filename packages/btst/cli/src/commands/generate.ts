@@ -1,5 +1,4 @@
 import { Command } from "commander";
-import yoctoSpinner from "yocto-spinner";
 import prompts from "prompts";
 import fs from "fs/promises";
 import path from "path";
@@ -7,6 +6,7 @@ import { filterAuthTables } from "../utils/filter-auth-tables";
 import type { BetterAuthOptions } from "better-auth";
 import { logger } from "../utils/logger";
 import { loadBetterDbSchema } from "../utils/schema-loader";
+import { createSpinner } from "../utils/spinner";
 
 // Import generators from local generators package
 import {
@@ -102,9 +102,10 @@ async function generateAction(options: GenerateOptions) {
 		};
 
 		// 5. Generate based on explicit ORM parameter
-		const spinner = yoctoSpinner({
+		const spinner = createSpinner({
 			text: `Generating ${options.orm} schema...`,
-		}).start();
+		});
+		spinner.start();
 
 		let result: any;
 		try {
@@ -139,7 +140,7 @@ async function generateAction(options: GenerateOptions) {
 
 		// 6. Handle output
 		if (!result?.code) {
-			logger.info("Schema is up to date.");
+			console.log("Schema is up to date.");
 			return;
 		}
 
@@ -156,7 +157,7 @@ async function generateAction(options: GenerateOptions) {
 				result.code.trim() === "" ||
 				result.code.trim() === ";"
 			) {
-				logger.info(
+				console.log(
 					"✓ No custom tables need to be created. Schema is up to date.",
 				);
 				return;

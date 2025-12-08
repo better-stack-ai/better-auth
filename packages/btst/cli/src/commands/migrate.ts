@@ -1,6 +1,5 @@
 import { Command } from "commander";
 import { getMigrations } from "better-auth/db";
-import yoctoSpinner from "yocto-spinner";
 import prompts from "prompts";
 import path from "path";
 import fs from "fs/promises";
@@ -10,6 +9,7 @@ import {
 	filterAuthTables,
 	DEFAULT_AUTH_TABLES,
 } from "../utils/filter-auth-tables";
+import { createSpinner } from "../utils/spinner";
 
 interface MigrateOptions {
 	config: string; // REQUIRED
@@ -61,7 +61,7 @@ async function migrateAction(options: MigrateOptions) {
 		const auth = createBetterAuthInstance(database, betterAuthSchema);
 
 		// 6. Get migrations
-		const spinner = yoctoSpinner({ text: "Preparing migrations..." });
+		const spinner = createSpinner({ text: "Preparing migrations..." });
 		spinner.start();
 		let toBeAdded: any[];
 		let toBeCreated: any[];
@@ -93,25 +93,25 @@ async function migrateAction(options: MigrateOptions) {
 			toBeAdded = toBeAdded.filter(
 				(c) => !DEFAULT_AUTH_TABLES.includes(c.table.toLowerCase()),
 			);
-			logger.info(
+			console.log(
 				"🧹 Filtered out Better Auth default tables (user, session, etc.)",
 			);
 		}
 
 		// 8. Show pending migrations
 		if (toBeCreated.length === 0 && toBeAdded.length === 0) {
-			logger.info("✓ Database is up to date.");
+			console.log("✓ Database is up to date.");
 			return;
 		}
 
-		logger.info("\n📋 Pending migrations:");
+		console.log("\n📋 Pending migrations:");
 		if (toBeCreated.length > 0) {
-			logger.info(`  Tables to create: ${toBeCreated.length}`);
-			toBeCreated.forEach((t) => logger.info(`    - ${t.table}`));
+			console.log(`  Tables to create: ${toBeCreated.length}`);
+			toBeCreated.forEach((t) => console.log(`    - ${t.table}`));
 		}
 		if (toBeAdded.length > 0) {
-			logger.info(`  Columns to add: ${toBeAdded.length}`);
-			toBeAdded.forEach((c) => logger.info(`    - ${c.table}.${c.column}`));
+			console.log(`  Columns to add: ${toBeAdded.length}`);
+			toBeAdded.forEach((c) => console.log(`    - ${c.table}.${c.column}`));
 		}
 
 		// 9. If output is specified, generate SQL file instead of running
@@ -136,7 +136,7 @@ async function migrateAction(options: MigrateOptions) {
 				}
 			}
 
-			const sqlSpinner = yoctoSpinner({ text: "Generating SQL..." });
+			const sqlSpinner = createSpinner({ text: "Generating SQL..." });
 			sqlSpinner.start();
 			try {
 				let sql = await compileMigrations();
@@ -148,7 +148,7 @@ async function migrateAction(options: MigrateOptions) {
 					// Check if filtering removed all content
 					if (!sql || sql.trim() === "" || sql.trim() === ";") {
 						sqlSpinner.stop();
-						logger.info(
+						console.log(
 							"✓ No custom tables need to be migrated. Database is up to date.",
 						);
 						return;
@@ -187,12 +187,12 @@ async function migrateAction(options: MigrateOptions) {
 		}
 
 		// 11. Run migrations
-		const runSpinner = yoctoSpinner({ text: "Running migrations..." });
+		const runSpinner = createSpinner({ text: "Running migrations..." });
 		runSpinner.start();
 		try {
 			await runMigrations();
 			runSpinner.stop();
-			logger.success("✅ Migrations completed!");
+			console.log("✅ Migrations completed!");
 		} catch (error: any) {
 			runSpinner.stop();
 			logger.error("Migration failed:", error.message);
