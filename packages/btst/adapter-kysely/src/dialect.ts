@@ -8,7 +8,7 @@
  * Any manual changes will be overwritten.
  */
 
-import type { BetterAuthOptions } from "@better-auth/core";
+import type { BetterAuthOptions } from "better-auth/types";
 import type { Dialect } from "kysely";
 import {
 	Kysely,

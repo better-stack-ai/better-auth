@@ -1,10 +1,9 @@
 // Drizzle adapter for @btst
-// Vendored from better-auth for independent publishing
 export * from "./drizzle-adapter";
 
 import type { Adapter, DatabaseDefinition } from "@btst/db";
 import type { BetterAuthOptions } from "better-auth/types";
-import { drizzleAdapter, type DB } from "./drizzle-adapter";
+import { drizzleAdapter, type DB } from "better-auth/adapters/drizzle";
 
 interface CreateDrizzleAdapterConfig {
 	/**
