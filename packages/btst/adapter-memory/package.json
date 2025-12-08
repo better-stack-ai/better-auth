@@ -44,10 +44,12 @@
     "@btst/db": "workspace:*"
   },
   "peerDependencies": {
-    "better-auth": ">=1.0.0"
+    "better-auth": ">=1.0.0",
+    "@better-auth/core": ">=1.0.0"
   },
   "devDependencies": {
     "better-auth": "workspace:*",
+    "@better-auth/core": "workspace:*",
     "typescript": "catalog:",
     "unbuild": "catalog:",
     "vitest": "catalog:"

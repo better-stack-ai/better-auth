@@ -94,54 +94,6 @@ describe("oidc init", () => {
 	});
 });
 
-// Type for the server client with OIDC plugin
-type ServerClient = ReturnType<
-	typeof createAuthClient<{
-		plugins: [ReturnType<typeof oidcClient>];
-	}>
->;
-
-/**
- * Helper to handle OIDC consent flow when required per OIDC spec
- */
-async function handleConsentFlow(
-	redirectURI: string,
-	serverClient: ServerClient,
-	sessionHeaders: Headers,
-	consentHeaders: Headers,
-): Promise<string> {
-	if (!redirectURI.includes("consent_code=")) {
-		return redirectURI;
-	}
-
-	// Extract consent code from redirect URL
-	const url = new URL(redirectURI, "http://localhost:3000");
-	const consentCode = url.searchParams.get("consent_code");
-
-	if (!consentCode) {
-		throw new Error("Consent code not found in redirect URL");
-	}
-
-	// Merge session headers with consent cookies
-	const authHeaders = new Headers(sessionHeaders);
-	consentHeaders.forEach((value, key) => {
-		if (key.toLowerCase() === "cookie") {
-			const existing = authHeaders.get("Cookie") || "";
-			authHeaders.set("Cookie", existing ? `${existing}; ${value}` : value);
-		} else {
-			authHeaders.set(key, value);
-		}
-	});
-
-	// Accept consent
-	const response = await serverClient.oauth2.consent(
-		{ accept: true, consent_code: consentCode },
-		{ headers: authHeaders, throw: true },
-	);
-
-	return response.redirectURI;
-}
-
 describe("oidc", async () => {
 	const {
 		auth: authorizationServer,
@@ -1144,23 +1096,24 @@ describe("oidc storage", async () => {
 					accountLinking: {
 						trustedProviders: ["test"],
 					},
-					plugins: [
-						genericOAuth({
-							config: [
-								{
-									providerId: "test",
-									clientId: application.clientId,
-									clientSecret: application.clientSecret || "",
-									authorizationUrl:
-										"http://localhost:3000/api/auth/oauth2/authorize",
-									tokenUrl: "http://localhost:3000/api/auth/oauth2/token",
-									scopes: ["openid", "profile", "email"],
-									pkce: true,
-								},
-							],
-						}),
-					],
-				});
+				},
+				plugins: [
+					genericOAuth({
+						config: [
+							{
+								providerId: "test",
+								clientId: application.clientId,
+								clientSecret: application.clientSecret || "",
+								authorizationUrl:
+									"http://localhost:3000/api/auth/oauth2/authorize",
+								tokenUrl: "http://localhost:3000/api/auth/oauth2/token",
+								scopes: ["openid", "profile", "email"],
+								pkce: true,
+							},
+						],
+					}),
+				],
+			});
 
 		const client = createAuthClient({
 			plugins: [genericOAuthClient()],
@@ -1597,7 +1550,6 @@ describe("oidc-jwt", async () => {
 				{
 					headers: newHeaders,
 					throw: true,
-					onSuccess: cookieSetter(oAuthHeaders),
 				},
 			);
 			expect(res.redirectURI).toContain(

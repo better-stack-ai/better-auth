@@ -5,7 +5,6 @@ import type {
 } from "@better-auth/core/db";
 import { APIError } from "better-call";
 import type { Account, Session, User } from "../types";
-import type { DBFieldAttribute } from "@better-auth/core/db";
 
 // Cache for parsed schemas to avoid reparsing on every request
 const cache = new WeakMap<
@@ -106,11 +105,6 @@ export function parseInputData<T extends Record<string, any>>(
 					}
 				}
 				if (data[key]) {
-					throw new APIError("BAD_REQUEST", {
-						message: `${key} is not allowed to be set`,
-					});
-				}
-				if (parsedData[key]) {
 					throw new APIError("BAD_REQUEST", {
 						message: `${key} is not allowed to be set`,
 					});

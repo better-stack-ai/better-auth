@@ -98,16 +98,6 @@
       "types": "./dist/client/lynx/index.d.mts",
       "default": "./dist/client/lynx/index.mjs"
     },
-    "./lynx": {
-      "import": {
-        "types": "./dist/client/lynx/index.d.ts",
-        "default": "./dist/client/lynx/index.mjs"
-      },
-      "require": {
-        "types": "./dist/client/lynx/index.d.cts",
-        "default": "./dist/client/lynx/index.cjs"
-      }
-    },
     "./test": {
       "dev-source": "./src/test-utils/index.ts",
       "types": "./dist/test-utils/index.d.mts",
@@ -351,9 +341,6 @@
       "lynx": [
         "./dist/client/lynx/index.d.mts"
       ],
-      "lynx": [
-        "./dist/client/lynx/index.d.ts"
-      ],
       "api": [
         "./dist/api/index.d.mts"
       ],
@@ -501,7 +488,7 @@
     "typescript": "catalog:",
     "vue": "^3.5.18"
   },
-  "peerDependenciesOptional": {
+  "peerDependencies": {
     "@lynx-js/react": "*",
     "@sveltejs/kit": "^2.0.0",
     "@tanstack/react-start": "^1.0.0",

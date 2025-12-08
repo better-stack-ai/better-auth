@@ -5,6 +5,8 @@ export default defineBuildConfig({
 	externals: [
 		"@btst/db",
 		"better-auth",
+		"@better-auth/core",
+		/^@better-auth\/core\//,
 		"kysely",
 		"drizzle-orm",
 		"@prisma/client",

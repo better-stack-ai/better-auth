@@ -318,24 +318,25 @@ describe("Generate Kysely migrations with real database", () => {
 	it("should generate Kysely migrations for SQLite", async () => {
 		const betterAuthSchema = testDb.getSchema();
 
-		// Use real SQLite database for introspection
-		const sqliteDb = new Database(":memory:");
+	// Use real SQLite database for introspection
+	const sqliteDb = new Database(":memory:");
 
-		const result = await generateMigrations({
-			adapter: {} as any,
-			options: {
-				database: sqliteDb,
-				plugins: [{ id: "better-db", schema: betterAuthSchema }],
-			},
-			file: "test-kysely.sql",
-		});
-
-		await expect(result.code).toMatchFileSnapshot(
-			"./__snapshots__/kysely-sqlite.sql",
-		);
-
-		sqliteDb.close();
+	const result = await generateMigrations({
+		adapter: {} as any,
+		options: {
+			database: sqliteDb,
+			plugins: [{ id: "better-db", schema: betterAuthSchema }],
+		},
+		file: "test-kysely.sql",
 	});
+
+	const filteredCode = filterAuthTables(result.code || "", "kysely");
+	await expect(filteredCode).toMatchFileSnapshot(
+		"./__snapshots__/kysely-sqlite.sql",
+	);
+
+	sqliteDb.close();
+});
 
 	it("should generate Kysely migrations with filter-auth", async () => {
 		const betterAuthSchema = testDb.getSchema();

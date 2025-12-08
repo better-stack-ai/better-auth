@@ -1,5 +1,4 @@
 import { getColorDepth } from "./color-depth";
-import { colors } from "./colors";
 
 export const TTY_COLORS = {
 	reset: "\x1b[0m",

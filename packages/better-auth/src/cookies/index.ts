@@ -203,7 +203,6 @@ export async function setCookieCache(
 					padding: false,
 				},
 			);
-			return;
 		}
 
 		// Check if we need to chunk the cookie (only if it exceeds 4093 bytes)

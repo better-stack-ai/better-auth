@@ -1,4 +1,5 @@
-import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
+import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
 
 export const post = pgTable("post", {
   id: text("id").primaryKey(),
@@ -26,3 +27,14 @@ export const tag = pgTable("tag", {
   id: text("id").primaryKey(),
   name: text("name").notNull().unique(),
 });
+
+export const postRelations = relations(post, ({ many }) => ({
+  comments: many(comment),
+}));
+
+export const commentRelations = relations(comment, ({ one }) => ({
+  post: one(post, {
+    fields: [comment.postId],
+    references: [post.id],
+  }),
+}));

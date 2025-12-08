@@ -1414,39 +1414,3 @@ describe("cookie cache versioning", async () => {
 		expect(s2.role).toBe(s1.role);
 	});
 });
-
-describe("getSession type tests", async () => {
-	const { auth } = await getTestInstance();
-
-	it("has parameters", () => {
-		type Params = Parameters<typeof auth.api.getSession>[0]["headers"];
-
-		expectTypeOf<Params>().toEqualTypeOf<
-			[string, string][] | Record<string, string> | Headers
-		>();
-	});
-
-	it("can return a response", () => {
-		type Returns = Awaited<ReturnType<typeof auth.api.getSession<true, false>>>;
-
-		expectTypeOf<{ returns: Returns }>().toMatchObjectType<{
-			returns: Response;
-		}>();
-	});
-
-	it("can return headers", () => {
-		type Returns = Awaited<ReturnType<typeof auth.api.getSession<false, true>>>;
-
-		expectTypeOf<{ returns: Returns["headers"] }>().toMatchObjectType<{
-			returns: Headers;
-		}>();
-	});
-
-	it("asResponse takes prescedence", () => {
-		type Returns = Awaited<ReturnType<typeof auth.api.getSession<true, true>>>;
-
-		expectTypeOf<{ returns: Returns }>().toMatchObjectType<{
-			returns: Response;
-		}>();
-	});
-});

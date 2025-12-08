@@ -75,6 +75,9 @@ export const mongodbAdapter = (
 				value: any;
 				model: string;
 			}) {
+				if (customIdGen) {
+					return value;
+				}
 				model = getDefaultModelName(model);
 				if (
 					field === "id" ||
@@ -559,7 +562,7 @@ export const mongodbAdapter = (
 			},
 			supportsNumericIds: false,
 			transaction:
-				config?.client && (config?.transaction ?? false)
+				config?.client && (config?.transaction ?? true)
 					? async (cb) => {
 							if (!config.client) {
 								return cb(lazyAdapter!(lazyOptions!));
@@ -598,14 +601,10 @@ export const mongodbAdapter = (
 			}) {
 				const customIdGen = getCustomIdGenerator(options);
 				if (field === "_id" || fieldAttributes.references?.field === "id") {
+					if (customIdGen) {
+						return data;
+					}
 					if (action === "update") {
-						if (typeof data === "string") {
-							try {
-								return new ObjectId(data);
-							} catch (error) {
-								return data;
-							}
-						}
 						return data;
 					}
 					if (Array.isArray(data)) {

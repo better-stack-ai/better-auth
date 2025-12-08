@@ -4,7 +4,6 @@ import { organization } from "better-auth/plugins";
 import { getTestInstance } from "better-auth/test";
 import { OAuth2Server } from "oauth2-mock-server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { getTestInstanceMemory as getTestInstance } from "better-auth/test";
 import { sso } from ".";
 import { ssoClient } from "./client";
 

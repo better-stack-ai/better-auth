@@ -18,19 +18,6 @@ import type { OrganizationPlugin } from "./organization";
 import type { HasPermissionBaseInput } from "./permission";
 import { hasPermissionFn } from "./permission";
 import type { OrganizationOptions } from "./types";
-import type { HasPermissionBaseInput } from "./permission";
-import { hasPermissionFn } from "./permission";
-
-/**
- * Using the same `hasPermissionFn` function, but without the need for a `ctx` parameter or the `organizationId` parameter.
- */
-export const clientSideHasPermission = (input: HasPermissionBaseInput) => {
-	const acRoles: {
-		[x: string]: Role<any> | undefined;
-	} = input.options.roles || defaultRoles;
-
-	return hasPermissionFn(input, acRoles);
-};
 
 /**
  * Using the same `hasPermissionFn` function, but without the need for a `ctx` parameter or the `organizationId` parameter.

@@ -10,6 +10,7 @@ catalog:
   better-call: 1.1.5
   tsdown: ^0.17.0
   typescript: ^5.9.3
+  unbuild: ^3.4.0
   vitest: 4.0.15
 
 catalogs:

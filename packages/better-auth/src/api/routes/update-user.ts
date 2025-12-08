@@ -114,7 +114,7 @@ export const updateUser = <O extends BetterAuthOptions>() =>
 				{
 					name,
 					image,
-					...rest,
+					...additionalFields,
 				},
 			);
 			/**
