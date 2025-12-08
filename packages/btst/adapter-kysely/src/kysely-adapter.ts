@@ -8,7 +8,7 @@
  * Any manual changes will be overwritten.
  */
 
-import type { BetterAuthOptions } from "@better-auth/core";
+import type { BetterAuthOptions } from "better-auth/types";
 import type {
 	AdapterFactoryCustomizeAdapterCreator,
 	AdapterFactoryOptions,
@@ -16,8 +16,8 @@ import type {
 	DBAdapterDebugLogOption,
 	JoinConfig,
 	Where,
-} from "@better-auth/core/db/adapter";
-import { createAdapterFactory } from "@better-auth/core/db/adapter";
+} from "better-auth/adapters";
+import { createAdapterFactory } from "better-auth/adapters";
 import type {
 	InsertQueryBuilder,
 	Kysely,

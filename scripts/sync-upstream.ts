@@ -2,13 +2,20 @@
 /**
  * Sync Script: Copy files from better-auth to @btst packages
  *
- * This script vendors code from the upstream better-auth package into our
- * @btst packages so we can publish them independently.
+ * This script syncs specific files from upstream better-auth into @btst packages.
  *
- * After the major refactor where code was moved to @better-auth/core,
- * the adapters now use proper package imports (e.g., @better-auth/core)
- * instead of relative imports, so we can copy them directly without
- * transforming imports.
+ * IMPORTANT: Adapters are NOT vendored anymore!
+ * After v2.0.0, all @btst adapters are thin wrappers that re-export from
+ * better-auth/adapters/* instead of vendoring the code. This keeps them simple
+ * and automatically in sync with better-auth updates.
+ *
+ * What this script syncs:
+ * - CLI generators (Drizzle, Kysely, Prisma schema generators)
+ * - CLI utilities
+ *
+ * What this script does NOT sync:
+ * - Adapter code (drizzle-adapter.ts, kysely-adapter.ts, etc.)
+ *   These are now simple re-exports in @btst packages
  *
  * Run: pnpm tsx scripts/sync-upstream.ts
  */
@@ -45,9 +52,7 @@ interface CopyConfig {
 const ROOT = path.resolve(__dirname, "..");
 
 const COPY_CONFIGS: CopyConfig[] = [
-	// Kysely Adapter
-	// Note: After the refactor to @better-auth/core, these files now import
-	// from @better-auth/core packages, so no import transformation needed
+	// Kysely Adapter - must be vendored since better-auth doesn't export it
 	{
 		from: "packages/better-auth/src/adapters/kysely-adapter",
 		to: "packages/btst/adapter-kysely/src",
@@ -58,20 +63,22 @@ const COPY_CONFIGS: CopyConfig[] = [
 			"bun-sqlite-dialect.ts",
 			"node-sqlite-dialect.ts",
 		],
-		// No transform needed - files already use @better-auth/core imports
-	},
-
-	// Drizzle Adapter
-	// Note: After the refactor to @better-auth/core, these files now import
-	// from @better-auth/core packages, so no import transformation needed
-	{
-		from: "packages/better-auth/src/adapters/drizzle-adapter",
-		to: "packages/btst/adapter-drizzle/src",
-		files: ["drizzle-adapter.ts"],
-		// No transform needed - files already use @better-auth/core imports
+		transformImports: (content: string) => {
+			// Change imports from @better-auth/core to better-auth/adapters
+			return content
+				.replace(
+					/from ["']@better-auth\/core["']/g,
+					'from "better-auth/types"',
+				)
+				.replace(
+					/from ["']@better-auth\/core\/db\/adapter["']/g,
+					'from "better-auth/adapters"',
+				);
+		},
 	},
 
 	// CLI Generators
+	// These generate schema files for different ORMs
 	{
 		from: "packages/cli/src/generators",
 		to: "packages/btst/cli/src/generators",
@@ -151,7 +158,8 @@ async function validateSources() {
 }
 
 async function syncFiles() {
-	console.log("🔄 Syncing upstream files...\n");
+	console.log("🔄 Syncing upstream files to @btst packages...\n");
+	console.log("📝 Note: Most adapters are simple re-exports, except Kysely (not exported by better-auth)\n");
 
 	await validateSources();
 
@@ -172,9 +180,13 @@ async function syncFiles() {
 	}
 
 	console.log(`✅ Sync complete! Copied ${totalFilesCopied} files.\n`);
-	console.log("Next steps:");
+	console.log("📋 Summary:");
+	console.log("  • Kysely adapter vendored (imports fixed for better-auth/adapters)");
+	console.log("  • CLI generators and utils synced");
+	console.log("  • Other adapters are thin wrappers (not vendored)");
+	console.log("\nNext steps:");
 	console.log("  1. Review the generated files");
-	console.log("  2. Run `pnpm build` to rebuild packages");
+	console.log("  2. Run `pnpm build --filter \"@btst/*\"` to rebuild packages");
 	console.log("  3. Test your changes");
 }
 
