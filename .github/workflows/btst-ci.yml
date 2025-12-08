@@ -28,11 +28,11 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: better_auth
         ports:
-          - 5432:5432
+          - 5433:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -42,10 +42,12 @@ jobs:
       mysql:
         image: mysql:8
         env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: test
+          MYSQL_ROOT_PASSWORD: root_password
+          MYSQL_DATABASE: better_auth
+          MYSQL_USER: user
+          MYSQL_PASSWORD: password
         ports:
-          - 3306:3306
+          - 3307:3306
         options: >-
           --health-cmd="mysqladmin ping"
           --health-interval=10s
@@ -85,8 +87,8 @@ jobs:
         env:
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
           TURBO_TEAM: ${{ vars.TURBO_TEAM || github.repository_owner }}
-          DATABASE_URL_POSTGRES: postgresql://postgres:postgres@localhost:5432/test
-          DATABASE_URL_MYSQL: mysql://root:root@localhost:3306/test
+          DATABASE_URL_POSTGRES: postgresql://user:password@localhost:5433/better_auth
+          DATABASE_URL_MYSQL: mysql://user:password@localhost:3307/better_auth
         run: pnpm turbo test --continue --filter="./packages/btst/*"
 
       - name: Typecheck BTST packages
