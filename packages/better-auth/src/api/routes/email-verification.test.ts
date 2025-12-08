@@ -235,6 +235,39 @@ describe("Email Verification", async () => {
 			},
 		);
 	});
+
+	it("should properly encode callbackURL with query parameters when sending verification email", async () => {
+		const mockSendEmailLocal = vi.fn();
+		let capturedUrl = "";
+		const { auth, testUser } = await getTestInstance({
+			emailAndPassword: {
+				enabled: true,
+				requireEmailVerification: true,
+			},
+			emailVerification: {
+				async sendVerificationEmail({ user, url, token: _token }) {
+					capturedUrl = url;
+					mockSendEmailLocal(user.email, url);
+				},
+			},
+		});
+
+		const callbackURL =
+			"https://example.com/app?redirect=/dashboard&tab=settings";
+		await auth.api.sendVerificationEmail({
+			body: {
+				email: testUser.email,
+				callbackURL,
+			},
+		});
+		expect(mockSendEmailLocal).toHaveBeenCalled();
+
+		const emailUrl = new URL(capturedUrl);
+		const callbackURLParam = emailUrl.searchParams.get("callbackURL");
+
+		expect(callbackURLParam).toBe(callbackURL);
+		expect(callbackURLParam).toContain("?redirect=/dashboard&tab=settings");
+	});
 });
 
 describe("Email Verification Secondary Storage", async () => {
@@ -308,23 +341,46 @@ describe("Email Verification Secondary Storage", async () => {
 				},
 				headers,
 			});
-			const newHeaders = new Headers();
+
+			// 1. Verify confirmation token (sent to old email)
+			const confirmationHeaders = new Headers();
 			await client.verifyEmail({
 				query: {
 					token,
 				},
 				fetchOptions: {
-					onSuccess: cookieSetter(newHeaders),
+					onSuccess: cookieSetter(confirmationHeaders),
 					headers,
 				},
 			});
+
+			// Check that email is NOT updated yet
+			const sessionAfterConfirmation = await client.getSession({
+				fetchOptions: {
+					headers: confirmationHeaders,
+				},
+			});
+			expect(sessionAfterConfirmation.data?.user.email).toBe(testUser.email);
+
+			// 2. Verify new email token (token variable was updated by sendVerificationEmail mock)
+			const verificationHeaders = new Headers();
+			await client.verifyEmail({
+				query: {
+					token,
+				},
+				fetchOptions: {
+					onSuccess: cookieSetter(verificationHeaders),
+					headers: confirmationHeaders,
+				},
+			});
+
 			const session = await client.getSession({
 				fetchOptions: {
-					headers: newHeaders,
+					headers: verificationHeaders,
 				},
 			});
 			expect(session.data?.user.email).toBe("new@email.com");
-			expect(session.data?.user.emailVerified).toBe(false);
+			expect(session.data?.user.emailVerified).toBe(true);
 		});
 	});
 
@@ -332,7 +388,7 @@ describe("Email Verification Secondary Storage", async () => {
 		const sampleUser = {
 			name: "sampler",
 			email: "sample@sample.com",
-			password: "samplesssss",
+			password: "sample-password",
 		};
 
 		await client.signUp.email({
@@ -389,9 +445,9 @@ describe("Email Verification Secondary Storage", async () => {
 
 	it("should set emailVerified on all sessions", async () => {
 		const sampleUser = {
-			name: "sampler",
-			email: "sample@sample.com",
-			password: "samplesssss",
+			name: "sampler2",
+			email: "sample2@sample.com",
+			password: "sample-password",
 		};
 
 		await client.signUp.email({
