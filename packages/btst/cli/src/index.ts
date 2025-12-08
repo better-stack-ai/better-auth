@@ -17,7 +17,7 @@ async function main() {
 		.addCommand(generateCommand)
 		.addCommand(initCommand)
 		.addCommand(migrateCommand)
-		.version("1.0.3")
+		.version("2.0.0")
 		.description("Better DB CLI - Database utilities without auth domain")
 		.action(() => program.help());
 
