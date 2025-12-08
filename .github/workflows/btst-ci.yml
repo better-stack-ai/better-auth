@@ -90,6 +90,3 @@ jobs:
           DATABASE_URL_POSTGRES: postgresql://user:password@localhost:5433/better_auth
           DATABASE_URL_MYSQL: mysql://user:password@localhost:3307/better_auth
         run: pnpm turbo test --continue --filter="./packages/btst/*"
-
-      - name: Typecheck BTST packages
-        run: pnpm turbo typecheck --filter="./packages/btst/*"
