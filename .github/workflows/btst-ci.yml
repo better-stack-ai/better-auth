@@ -1,0 +1,114 @@
+name: BTST CI
+
+on:
+  pull_request:
+    paths:
+      - 'packages/btst/**'
+      - 'scripts/sync-upstream.ts'
+      - '.github/workflows/btst-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/btst/**'
+      - 'scripts/sync-upstream.ts'
+
+concurrency:
+  group: btst-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Cache turbo build setup
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-btst-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-btst-
+
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install
+
+      - name: Build BTST packages
+        env:
+          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+          TURBO_TEAM: ${{ vars.TURBO_TEAM || github.repository_owner }}
+          TURBO_CACHE: remote:rw
+        run: pnpm turbo build --filter="./packages/btst/*"
+
+      - name: Test BTST packages
+        env:
+          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+          TURBO_TEAM: ${{ vars.TURBO_TEAM || github.repository_owner }}
+          DATABASE_URL_POSTGRES: postgresql://postgres:postgres@localhost:5432/test
+          DATABASE_URL_MYSQL: mysql://root:root@localhost:3306/test
+        run: pnpm turbo test --continue --filter="./packages/btst/*"
+
+      - name: Typecheck BTST packages
+        run: pnpm turbo typecheck --filter="./packages/btst/*"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version: 22.x
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install
+
+      - name: Build BTST packages
+        run: pnpm turbo build --filter="./packages/btst/*"
+
+      - name: Lint BTST packages
+        run: pnpm biome check ./packages/btst
