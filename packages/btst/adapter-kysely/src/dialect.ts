@@ -1,21 +1,22 @@
 /**
  * ⚠️ AUTO-GENERATED - DO NOT MODIFY
- *
+ * 
  * This file is automatically copied from better-auth.
  * Source: packages/better-auth/src/adapters/kysely-adapter/dialect.ts
- *
+ * 
  * To update: run `pnpm sync-upstream`
  * Any manual changes will be overwritten.
  */
 
-import { Kysely, MssqlDialect } from "kysely";
+import type { BetterAuthOptions } from "@better-auth/core";
+import type { Dialect } from "kysely";
 import {
-	type Dialect,
+	Kysely,
+	MssqlDialect,
 	MysqlDialect,
 	PostgresDialect,
 	SqliteDialect,
 } from "kysely";
-import type { BetterAuthOptions } from "better-auth/types";
 import type { KyselyDatabaseType } from "./types";
 
 export function getKyselyDatabaseType(

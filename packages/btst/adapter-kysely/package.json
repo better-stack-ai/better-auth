@@ -1,6 +1,6 @@
 {
   "name": "@btst/adapter-kysely",
-  "version": "1.0.3",
+  "version": "2.0.0",
   "description": "Kysely adapter for btst",
   "type": "module",
   "license": "MIT",
@@ -44,10 +44,12 @@
   },
   "peerDependencies": {
     "better-auth": ">=1.0.0",
+    "@better-auth/core": ">=1.0.0",
     "kysely": "^0.28.0"
   },
   "devDependencies": {
     "better-auth": "workspace:*",
+    "@better-auth/core": "workspace:*",
     "kysely": "^0.28.5",
     "typescript": "catalog:",
     "unbuild": "catalog:"

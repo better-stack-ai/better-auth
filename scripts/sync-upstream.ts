@@ -5,6 +5,11 @@
  * This script vendors code from the upstream better-auth package into our
  * @btst packages so we can publish them independently.
  *
+ * After the major refactor where code was moved to @better-auth/core,
+ * the adapters now use proper package imports (e.g., @better-auth/core)
+ * instead of relative imports, so we can copy them directly without
+ * transforming imports.
+ *
  * Run: pnpm tsx scripts/sync-upstream.ts
  */
 
@@ -41,6 +46,8 @@ const ROOT = path.resolve(__dirname, "..");
 
 const COPY_CONFIGS: CopyConfig[] = [
 	// Kysely Adapter
+	// Note: After the refactor to @better-auth/core, these files now import
+	// from @better-auth/core packages, so no import transformation needed
 	{
 		from: "packages/better-auth/src/adapters/kysely-adapter",
 		to: "packages/btst/adapter-kysely/src",
@@ -51,33 +58,17 @@ const COPY_CONFIGS: CopyConfig[] = [
 			"bun-sqlite-dialect.ts",
 			"node-sqlite-dialect.ts",
 		],
-		transformImports: (content) => {
-			// Update imports from better-auth internal paths to external package imports
-			return content
-				.replace(/from ["']\.\.\/\.\.\/types["']/g, 'from "better-auth/types"')
-				.replace(
-					/from ["']\.\.\/adapter-factory["']/g,
-					'from "better-auth/adapters"',
-				)
-				.replace(/from ["']\.\.\/\.\.\/db["']/g, 'from "better-auth/db"');
-		},
+		// No transform needed - files already use @better-auth/core imports
 	},
 
 	// Drizzle Adapter
+	// Note: After the refactor to @better-auth/core, these files now import
+	// from @better-auth/core packages, so no import transformation needed
 	{
 		from: "packages/better-auth/src/adapters/drizzle-adapter",
 		to: "packages/btst/adapter-drizzle/src",
 		files: ["drizzle-adapter.ts"],
-		transformImports: (content) => {
-			return content
-				.replace(/from ["']\.\.\/\.\.\/types["']/g, 'from "better-auth/types"')
-				.replace(
-					/from ["']\.\.\/adapter-factory["']/g,
-					'from "better-auth/adapters"',
-				)
-				.replace(/from ["']\.\.\/\.\.\/db["']/g, 'from "better-auth/db"')
-				.replace(/from ["']\.\.\/\.\.\/error["']/g, 'from "better-auth"');
-		},
+		// No transform needed - files already use @better-auth/core imports
 	},
 
 	// CLI Generators
@@ -85,10 +76,15 @@ const COPY_CONFIGS: CopyConfig[] = [
 		from: "packages/cli/src/generators",
 		to: "packages/btst/cli/src/generators",
 		files: ["drizzle.ts", "prisma.ts", "kysely.ts", "types.ts"],
-		transformImports: (content) => {
-			// These should already use better-auth package imports, so minimal changes
-			return content;
-		},
+		// No transform needed - @better-auth/core is a peer dependency
+	},
+
+	// CLI Utils (required by generators)
+	{
+		from: "packages/cli/src/utils",
+		to: "packages/btst/cli/src/utils",
+		files: ["get-package-info.ts"],
+		// No transform needed - files already use proper package imports
 	},
 ];
 
@@ -122,8 +118,44 @@ async function copyFile(config: CopyConfig, file: string) {
 	await fs.writeFile(destPath, content, "utf-8");
 }
 
+async function validateSources() {
+	console.log("🔍 Validating source files...\n");
+	let allValid = true;
+
+	for (const config of COPY_CONFIGS) {
+		const sourceDir = path.join(ROOT, config.from);
+		if (!existsSync(sourceDir)) {
+			console.error(`❌ Source directory not found: ${config.from}`);
+			allValid = false;
+			continue;
+		}
+
+		if (config.files) {
+			for (const file of config.files) {
+				const sourcePath = path.join(ROOT, config.from, file);
+				if (!existsSync(sourcePath)) {
+					console.error(`❌ Source file not found: ${config.from}/${file}`);
+					allValid = false;
+				}
+			}
+		}
+	}
+
+	if (!allValid) {
+		throw new Error(
+			"Some source files are missing. The upstream structure may have changed.",
+		);
+	}
+
+	console.log("✅ All source files found\n");
+}
+
 async function syncFiles() {
 	console.log("🔄 Syncing upstream files...\n");
+
+	await validateSources();
+
+	let totalFilesCopied = 0;
 
 	for (const config of COPY_CONFIGS) {
 		const destName = path.basename(config.to);
@@ -132,13 +164,14 @@ async function syncFiles() {
 		if (config.files) {
 			for (const file of config.files) {
 				await copyFile(config, file);
+				totalFilesCopied++;
 			}
 		}
 
 		console.log("");
 	}
 
-	console.log("✅ Sync complete!\n");
+	console.log(`✅ Sync complete! Copied ${totalFilesCopied} files.\n`);
 	console.log("Next steps:");
 	console.log("  1. Review the generated files");
 	console.log("  2. Run `pnpm build` to rebuild packages");
@@ -146,6 +179,6 @@ async function syncFiles() {
 }
 
 syncFiles().catch((error) => {
-	console.error("❌ Sync failed:", error);
+	console.error("❌ Sync failed:", error.message || error);
 	process.exit(1);
 });

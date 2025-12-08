@@ -126,6 +126,36 @@ export function filterDrizzleAuthTables(code: string): string {
 			continue;
 		}
 
+		// Filter out relations that reference auth tables
+		// Match patterns like: export const userRelations, export const sessionRelations, etc.
+		const relationMatch = line.match(/export\s+const\s+(\w+)Relations\s*=/);
+		if (relationMatch) {
+			const baseTableName = relationMatch[1];
+			if (
+				baseTableName &&
+				(DEFAULT_AUTH_TABLES.includes(baseTableName.toLowerCase()) ||
+					DEFAULT_AUTH_MODELS.some(
+						(model) => baseTableName.toLowerCase() === model.toLowerCase(),
+					))
+			) {
+				// Skip this relation and all its lines until we find }));
+				let relationDepth = 0;
+				let foundEnd = false;
+				for (let j = i; j < lines.length && !foundEnd; j++) {
+					const relLine = lines[j] || "";
+					for (const char of relLine) {
+						if (char === "(") relationDepth++;
+						if (char === ")") relationDepth--;
+					}
+					if (relationDepth === 0 && relLine.includes(";")) {
+						foundEnd = true;
+						i = j; // Skip ahead to the end of this relation
+					}
+				}
+				continue;
+			}
+		}
+
 		filteredLines.push(line);
 	}
 
@@ -167,6 +197,18 @@ export function filterKyselyAuthTables(code: string): string {
 				inAuthTable = false; // End of statement
 			}
 			continue; // Skip all lines in auth table
+		}
+
+		// Skip CREATE INDEX statements for auth tables
+		// Match patterns like: CREATE INDEX "session_userId_idx" ON "session"
+		const indexMatch = line.match(
+			/CREATE\s+INDEX\s+["`']?\w*["`']?\s+ON\s+["`']?(\w+)["`']?/i,
+		);
+		if (indexMatch) {
+			const tableName = indexMatch[1];
+			if (tableName && DEFAULT_AUTH_TABLES.includes(tableName.toLowerCase())) {
+				continue; // Skip this index
+			}
 		}
 
 		// Skip ALTER TABLE statements for auth tables

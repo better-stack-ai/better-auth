@@ -1,9 +1,11 @@
+import { relations } from "drizzle-orm";
 import {
   mysqlTable,
   varchar,
   text,
   timestamp,
   boolean,
+  index,
 } from "drizzle-orm/mysql-core";
 
 export const post = mysqlTable("post", {
@@ -32,3 +34,14 @@ export const tag = mysqlTable("tag", {
   id: varchar("id", { length: 36 }).primaryKey(),
   name: varchar("name", { length: 255 }).notNull().unique(),
 });
+
+export const postRelations = relations(post, ({ many }) => ({
+  comments: many(comment),
+}));
+
+export const commentRelations = relations(comment, ({ one }) => ({
+  post: one(post, {
+    fields: [comment.postId],
+    references: [post.id],
+  }),
+}));

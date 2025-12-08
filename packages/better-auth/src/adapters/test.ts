@@ -1,11 +1,13 @@
-import { expect, test, describe, beforeAll } from "vitest";
-import type { Adapter, BetterAuthOptions, User } from "../types";
+import type { BetterAuthOptions } from "@better-auth/core";
+import type { DBAdapter } from "@better-auth/core/db/adapter";
+import { beforeAll, describe, expect, test } from "vitest";
+import type { User } from "../types";
 import { generateId } from "../utils";
 
 interface AdapterTestOptions {
 	getAdapter: (
 		customOptions?: Omit<BetterAuthOptions, "database">,
-	) => Promise<Adapter> | Adapter;
+	) => Promise<DBAdapter<BetterAuthOptions>> | DBAdapter<BetterAuthOptions>;
 	disableTests?: Partial<Record<keyof typeof adapterTests, boolean>>;
 	testPrefix?: string;
 }
@@ -13,7 +15,7 @@ interface AdapterTestOptions {
 interface NumberIdAdapterTestOptions {
 	getAdapter: (
 		customOptions?: Omit<BetterAuthOptions, "database">,
-	) => Promise<Adapter>;
+	) => Promise<DBAdapter<BetterAuthOptions>>;
 	disableTests?: Partial<Record<keyof typeof numberIdAdapterTests, boolean>>;
 	testPrefix?: string;
 }
@@ -1051,11 +1053,11 @@ function adapterTest(
 	);
 }
 
-export async function runAdapterTest(opts: AdapterTestOptions) {
+export function runAdapterTest(opts: AdapterTestOptions) {
 	return adapterTest(opts);
 }
 
-export async function runNumberIdAdapterTest(opts: NumberIdAdapterTestOptions) {
+export function runNumberIdAdapterTest(opts: NumberIdAdapterTestOptions) {
 	const cleanup: { modelName: string; id: string }[] = [];
 
 	// Generate unique test identifier for this test run to avoid conflicts
@@ -1067,7 +1069,7 @@ export async function runNumberIdAdapterTest(opts: NumberIdAdapterTestOptions) {
 		await opts.getAdapter({
 			advanced: {
 				database: {
-					useNumberId: true,
+					generateId: "serial",
 				},
 			},
 		});
@@ -1149,7 +1151,7 @@ export async function runNumberIdAdapterTest(opts: NumberIdAdapterTestOptions) {
 				predefinedOptions: {
 					advanced: {
 						database: {
-							useNumberId: true,
+							generateId: "serial",
 						},
 					},
 				},

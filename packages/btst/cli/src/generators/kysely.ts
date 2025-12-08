@@ -1,9 +1,9 @@
 /**
  * ⚠️ AUTO-GENERATED - DO NOT MODIFY
- *
+ * 
  * This file is automatically copied from better-auth.
  * Source: packages/cli/src/generators/kysely.ts
- *
+ * 
  * To update: run `pnpm sync-upstream`
  * Any manual changes will be overwritten.
  */

@@ -1,6 +1,6 @@
 {
   "name": "@btst/cli",
-  "version": "1.0.3",
+  "version": "2.0.0",
   "description": "CLI for btst schema generation and migration",
   "type": "module",
   "license": "MIT",
@@ -49,7 +49,8 @@
     "prettier": "^3.6.2"
   },
   "peerDependencies": {
-    "better-auth": ">=1.0.0"
+    "better-auth": ">=1.0.0",
+    "@better-auth/core": ">=1.0.0"
   },
   "optionalDependencies": {
     "pg": "^8.14.0",
@@ -58,6 +59,7 @@
   },
   "devDependencies": {
     "better-auth": "workspace:*",
+    "@better-auth/core": "workspace:*",
     "kysely": "^0.28.5",
     "drizzle-orm": "^0.38.2",
     "@prisma/client": "^5.22.0",

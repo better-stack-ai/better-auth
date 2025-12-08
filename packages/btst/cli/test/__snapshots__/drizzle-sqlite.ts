@@ -1,5 +1,5 @@
-import { sql } from "drizzle-orm";
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { relations, sql } from "drizzle-orm";
+import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 
 export const post = sqliteTable("post", {
   id: text("id").primaryKey(),
@@ -27,3 +27,14 @@ export const tag = sqliteTable("tag", {
   id: text("id").primaryKey(),
   name: text("name").notNull().unique(),
 });
+
+export const postRelations = relations(post, ({ many }) => ({
+  comments: many(comment),
+}));
+
+export const commentRelations = relations(comment, ({ one }) => ({
+  post: one(post, {
+    fields: [comment.postId],
+    references: [post.id],
+  }),
+}));

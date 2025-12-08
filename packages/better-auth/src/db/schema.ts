@@ -1,61 +1,10 @@
-import * as z from "zod";
-import type { AuthPluginSchema } from "../types/plugins";
-import type { BetterAuthOptions } from "../types/options";
+import type { BetterAuthOptions } from "@better-auth/core";
+import type {
+	BetterAuthPluginDBSchema,
+	DBFieldAttribute,
+} from "@better-auth/core/db";
 import { APIError } from "better-call";
 import type { Account, Session, User } from "../types";
-import type { DBFieldAttribute } from "@better-auth/core/db";
-
-export const coreSchema = z.object({
-	id: z.string(),
-	createdAt: z.date().default(() => new Date()),
-	updatedAt: z.date().default(() => new Date()),
-});
-
-export const accountSchema = coreSchema.extend({
-	providerId: z.string(),
-	accountId: z.string(),
-	userId: z.coerce.string(),
-	accessToken: z.string().nullish(),
-	refreshToken: z.string().nullish(),
-	idToken: z.string().nullish(),
-	/**
-	 * Access token expires at
-	 */
-	accessTokenExpiresAt: z.date().nullish(),
-	/**
-	 * Refresh token expires at
-	 */
-	refreshTokenExpiresAt: z.date().nullish(),
-	/**
-	 * The scopes that the user has authorized
-	 */
-	scope: z.string().nullish(),
-	/**
-	 * Password is only stored in the credential provider
-	 */
-	password: z.string().nullish(),
-});
-
-export const userSchema = coreSchema.extend({
-	email: z.string().transform((val) => val.toLowerCase()),
-	emailVerified: z.boolean().default(false),
-	name: z.string(),
-	image: z.string().nullish(),
-});
-
-export const sessionSchema = coreSchema.extend({
-	userId: z.coerce.string(),
-	expiresAt: z.date(),
-	token: z.string(),
-	ipAddress: z.string().nullish(),
-	userAgent: z.string().nullish(),
-});
-
-export const verificationSchema = coreSchema.extend({
-	value: z.string(),
-	expiresAt: z.date(),
-	identifier: z.string(),
-});
 
 // Cache for parsed schemas to avoid reparsing on every request
 const cache = new WeakMap<
@@ -111,7 +60,10 @@ function getAllFields(options: BetterAuthOptions, table: string) {
 
 export function parseUserOutput(options: BetterAuthOptions, user: User) {
 	const schema = getAllFields(options, "user");
-	return parseOutputData(user, { fields: schema });
+	return {
+		...parseOutputData(user, { fields: schema }),
+		id: user.id,
+	};
 }
 
 export function parseAccountOutput(
@@ -134,7 +86,7 @@ export function parseInputData<T extends Record<string, any>>(
 	data: T,
 	schema: {
 		fields: Record<string, DBFieldAttribute>;
-		action?: "create" | "update";
+		action?: ("create" | "update") | undefined;
 	},
 ) {
 	const action = schema.action || "create";
@@ -146,11 +98,13 @@ export function parseInputData<T extends Record<string, any>>(
 	for (const key in fields) {
 		if (key in data) {
 			if (fields[key]!.input === false) {
-				if (fields[key]!.defaultValue) {
-					parsedData[key] = fields[key]!.defaultValue;
-					continue;
+				if (fields[key]!.defaultValue !== undefined) {
+					if (action !== "update") {
+						parsedData[key] = fields[key]!.defaultValue;
+						continue;
+					}
 				}
-				if (parsedData[key]) {
+				if (data[key]) {
 					throw new APIError("BAD_REQUEST", {
 						message: `${key} is not allowed to be set`,
 					});
@@ -158,7 +112,20 @@ export function parseInputData<T extends Record<string, any>>(
 				continue;
 			}
 			if (fields[key]!.validator?.input && data[key] !== undefined) {
-				parsedData[key] = fields[key]!.validator.input.parse(data[key]);
+				const result = fields[key]!.validator.input["~standard"].validate(
+					data[key],
+				);
+				if (result instanceof Promise) {
+					throw new APIError("INTERNAL_SERVER_ERROR", {
+						message: "Async validation is not supported for additional fields",
+					});
+				}
+				if ("issues" in result && result.issues) {
+					throw new APIError("BAD_REQUEST", {
+						message: result.issues[0]?.message || "Validation Error",
+					});
+				}
+				parsedData[key] = result.value;
 				continue;
 			}
 			if (fields[key]!.transform?.input && data[key] !== undefined) {
@@ -169,7 +136,11 @@ export function parseInputData<T extends Record<string, any>>(
 			continue;
 		}
 
-		if (fields[key]!.defaultValue && action === "create") {
+		if (fields[key]!.defaultValue !== undefined && action === "create") {
+			if (typeof fields[key]!.defaultValue === "function") {
+				parsedData[key] = fields[key]!.defaultValue();
+				continue;
+			}
 			parsedData[key] = fields[key]!.defaultValue;
 			continue;
 		}
@@ -194,7 +165,7 @@ export function parseUserInput(
 
 export function parseAdditionalUserInput(
 	options: BetterAuthOptions,
-	user?: Record<string, any>,
+	user?: Record<string, any> | undefined,
 ) {
 	const schema = getAllFields(options, "user");
 	return parseInputData(user || {}, { fields: schema });
@@ -216,16 +187,22 @@ export function parseSessionInput(
 	return parseInputData(session, { fields: schema });
 }
 
-export function mergeSchema<S extends AuthPluginSchema>(
+export function mergeSchema<S extends BetterAuthPluginDBSchema>(
 	schema: S,
-	newSchema?: {
-		[K in keyof S]?: {
-			modelName?: string;
-			fields?: {
-				[P: string]: string;
-			};
-		};
-	},
+	newSchema?:
+		| {
+				[K in keyof S]?:
+					| {
+							modelName?: string | undefined;
+							fields?:
+								| {
+										[P: string]: string;
+								  }
+								| undefined;
+					  }
+					| undefined;
+		  }
+		| undefined,
 ) {
 	if (!newSchema) {
 		return schema;
