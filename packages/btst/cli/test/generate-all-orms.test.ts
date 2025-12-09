@@ -97,6 +97,7 @@ describe("Generate Prisma schemas for all databases", () => {
 			adapter,
 			options: {
 				database: prismaAdapter({}, { provider: "postgresql" }),
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 			},
 			file: "test-pg.prisma",
@@ -120,6 +121,7 @@ describe("Generate Prisma schemas for all databases", () => {
 			adapter,
 			options: {
 				database: prismaAdapter({}, { provider: "mysql" }),
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 			},
 			file: "test-mysql.prisma",
@@ -143,6 +145,7 @@ describe("Generate Prisma schemas for all databases", () => {
 			adapter,
 			options: {
 				database: prismaAdapter({}, { provider: "sqlite" }),
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 			},
 			file: "test-sqlite.prisma",
@@ -166,6 +169,7 @@ describe("Generate Prisma schemas for all databases", () => {
 			adapter,
 			options: {
 				database: prismaAdapter({}, { provider: "mongodb" }),
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 			},
 			file: "test-mongodb.prisma",
@@ -189,6 +193,7 @@ describe("Generate Prisma schemas for all databases", () => {
 			adapter,
 			options: {
 				database: prismaAdapter({}, { provider: "postgresql" }),
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 			},
 			file: "test-filtered.prisma",
@@ -223,6 +228,7 @@ describe("Generate Drizzle schemas for all databases", () => {
 			adapter,
 			options: {
 				database: drizzleAdapter({}, { provider: "pg", schema: {} }),
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 			},
 			file: "test-pg.ts",
@@ -249,6 +255,7 @@ describe("Generate Drizzle schemas for all databases", () => {
 			adapter,
 			options: {
 				database: drizzleAdapter({}, { provider: "mysql", schema: {} }),
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 			},
 			file: "test-mysql.ts",
@@ -275,6 +282,7 @@ describe("Generate Drizzle schemas for all databases", () => {
 			adapter,
 			options: {
 				database: drizzleAdapter({}, { provider: "sqlite", schema: {} }),
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 			},
 			file: "test-sqlite.ts",
@@ -298,6 +306,7 @@ describe("Generate Drizzle schemas for all databases", () => {
 			adapter,
 			options: {
 				database: drizzleAdapter({}, { provider: "pg", schema: {} }),
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 			},
 			file: "test-filtered.ts",
@@ -325,6 +334,7 @@ describe("Generate Kysely migrations with real database", () => {
 		adapter: {} as any,
 		options: {
 			database: sqliteDb,
+			experimental: { joins: true },
 			plugins: [{ id: "better-db", schema: betterAuthSchema }],
 		},
 		file: "test-kysely.sql",
@@ -347,6 +357,7 @@ describe("Generate Kysely migrations with real database", () => {
 			adapter: {} as any,
 			options: {
 				database: sqliteDb,
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 			},
 			file: "test-kysely-filtered.sql",
@@ -379,6 +390,7 @@ describe("Generate with advanced options", () => {
 			adapter,
 			options: {
 				database: prismaAdapter({}, { provider: "postgresql" }),
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 				advanced: {
 					database: {
@@ -407,6 +419,7 @@ describe("Generate with advanced options", () => {
 			adapter,
 			options: {
 				database: drizzleAdapter({}, { provider: "pg", schema: {} }),
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 				advanced: {
 					database: {
@@ -447,6 +460,7 @@ describe("Generate with advanced options", () => {
 			adapter,
 			options: {
 				database: prismaAdapter({}, { provider: "postgresql" }),
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 			},
 			file: "test-custom.prisma",
@@ -498,6 +512,7 @@ describe("Generate with advanced options", () => {
 			adapter,
 			options: {
 				database: prismaAdapter({}, { provider: "postgresql" }),
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 			},
 			file: "test-types.prisma",
@@ -553,6 +568,7 @@ describe("Generate with advanced options", () => {
 			adapter,
 			options: {
 				database: prismaAdapter({}, { provider: "postgresql" }),
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 			},
 			file: "test-refs.prisma",
@@ -594,6 +610,7 @@ describe("Generate with filter-auth for all ORMs", () => {
 			adapter,
 			options: {
 				database: prismaAdapter({}, { provider: "postgresql" }),
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 			},
 			file: "test.prisma",
@@ -620,6 +637,7 @@ describe("Generate with filter-auth for all ORMs", () => {
 			adapter,
 			options: {
 				database: drizzleAdapter({}, { provider: "pg", schema: {} }),
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 			},
 			file: "test.ts",
@@ -653,6 +671,7 @@ describe("Edge cases and error handling", () => {
 			adapter,
 			options: {
 				database: prismaAdapter({}, { provider: "postgresql" }),
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 			},
 			file: "test.prisma",
@@ -699,6 +718,7 @@ describe("Edge cases and error handling", () => {
 			adapter,
 			options: {
 				database: prismaAdapter({}, { provider: "postgresql" }),
+				experimental: { joins: true },
 				plugins: [{ id: "better-db", schema: betterAuthSchema }],
 			},
 			file: "test.prisma",

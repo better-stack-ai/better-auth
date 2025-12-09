@@ -41,6 +41,11 @@ export function createPrismaAdapter(
 		const mergedOptions = {
 			...options,
 			...adapterOptions,
+			experimental: {
+				...options.experimental,
+				...adapterOptions.experimental,
+				joins: true, // Enable experimental joins for btst adapters
+			},
 			plugins: [
 				...(options.plugins || []),
 				...(adapterOptions.plugins || []),

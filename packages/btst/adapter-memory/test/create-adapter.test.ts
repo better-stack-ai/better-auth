@@ -204,3 +204,221 @@ describe("createMemoryAdapter helper", () => {
 		expect(messages[0]?.content).toBe("My Message");
 	});
 });
+
+describe("createMemoryAdapter with experimental joins", () => {
+	it("should support one-to-one joins", async () => {
+		const db = defineDb({
+			author: {
+				modelName: "author",
+				fields: {
+					name: {
+						type: "string",
+						required: true,
+					},
+				},
+			},
+			profile: {
+				modelName: "profile",
+				fields: {
+					bio: {
+						type: "string",
+						required: false,
+					},
+					authorId: {
+						type: "string",
+						required: true,
+						unique: true,
+						references: {
+							model: "author",
+							field: "id",
+							onDelete: "cascade",
+						},
+					},
+				},
+			},
+		});
+
+		const adapterFactory = createMemoryAdapter(db, {
+			experimental: {
+				joins: true,
+			},
+		});
+
+		const adapter = adapterFactory({
+			experimental: {
+				joins: true,
+			},
+		});
+
+		// Create author and profile
+		const author = await adapter.create({
+			model: "author",
+			data: { name: "Jane Doe" },
+		});
+
+		await adapter.create({
+			model: "profile",
+			data: { bio: "Award-winning writer", authorId: author.id },
+		});
+
+		// Find author with profile joined using correct JoinOption shape
+		const result = await adapter.findOne({
+			model: "author",
+			where: [{ field: "id", value: author.id }],
+			join: {
+				profile: true,
+			},
+		});
+
+		expect(result).toBeDefined();
+		expect((result as any).name).toBe("Jane Doe");
+		expect((result as any).profile).toBeDefined();
+		expect((result as any).profile.bio).toBe("Award-winning writer");
+	});
+
+	it("should support one-to-many joins", async () => {
+		const db = defineDb({
+			author: {
+				modelName: "author",
+				fields: {
+					name: {
+						type: "string",
+						required: true,
+					},
+				},
+			},
+			book: {
+				modelName: "book",
+				fields: {
+					title: {
+						type: "string",
+						required: true,
+					},
+					authorId: {
+						type: "string",
+						required: true,
+						references: {
+							model: "author",
+							field: "id",
+							onDelete: "cascade",
+						},
+					},
+				},
+			},
+		});
+
+		const adapterFactory = createMemoryAdapter(db, {
+			experimental: {
+				joins: true,
+			},
+		});
+
+		const adapter = adapterFactory({
+			experimental: {
+				joins: true,
+			},
+		});
+
+		// Create author and books
+		const author = await adapter.create({
+			model: "author",
+			data: { name: "John Smith" },
+		});
+
+		await adapter.create({
+			model: "book",
+			data: { title: "Book One", authorId: author.id },
+		});
+
+		await adapter.create({
+			model: "book",
+			data: { title: "Book Two", authorId: author.id },
+		});
+
+		// Find author with books joined using correct JoinOption shape
+		const result = await adapter.findOne({
+			model: "author",
+			where: [{ field: "id", value: author.id }],
+			join: {
+				book: true,
+			},
+		});
+
+		expect(result).toBeDefined();
+		expect((result as any).name).toBe("John Smith");
+		expect((result as any).book).toBeDefined();
+		expect(Array.isArray((result as any).book)).toBe(true);
+		expect((result as any).book.length).toBe(2);
+	});
+
+	it("should respect limit on one-to-many joins", async () => {
+		const db = defineDb({
+			author: {
+				modelName: "author",
+				fields: {
+					name: {
+						type: "string",
+						required: true,
+					},
+				},
+			},
+			book: {
+				modelName: "book",
+				fields: {
+					title: {
+						type: "string",
+						required: true,
+					},
+					authorId: {
+						type: "string",
+						required: true,
+						references: {
+							model: "author",
+							field: "id",
+							onDelete: "cascade",
+						},
+					},
+				},
+			},
+		});
+
+		const adapterFactory = createMemoryAdapter(db, {
+			experimental: {
+				joins: true,
+			},
+		});
+
+		const adapter = adapterFactory({
+			experimental: {
+				joins: true,
+			},
+		});
+
+		// Create author and many books
+		const author = await adapter.create({
+			model: "author",
+			data: { name: "Prolific Writer" },
+		});
+
+		for (let i = 1; i <= 10; i++) {
+			await adapter.create({
+				model: "book",
+				data: { title: `Book ${i}`, authorId: author.id },
+			});
+		}
+
+		// Find author with books joined, limited to 3 using correct JoinOption shape
+		const result = await adapter.findOne({
+			model: "author",
+			where: [{ field: "id", value: author.id }],
+			join: {
+				book: { limit: 3 },
+			},
+		});
+
+		expect(result).toBeDefined();
+		expect((result as any).book).toBeDefined();
+		expect(Array.isArray((result as any).book)).toBe(true);
+		expect((result as any).book.length).toBe(3);
+	});
+});
