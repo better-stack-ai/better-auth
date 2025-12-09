@@ -90,9 +90,12 @@ async function generateAction(options: GenerateOptions) {
 			adapter = null;
 		}
 
-		// 4. Create options with schema
+		// 4. Create options with schema and experimental joins enabled
 		const generatorOptions = {
 			database: adapter,
+			experimental: {
+				joins: true, // Enable experimental joins for relationship generation
+			},
 			plugins: [
 				{
 					id: "better-db-schema",

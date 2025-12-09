@@ -1,50 +1,29 @@
-<p align="center">
-  <picture>
-    <source srcset="./banner-dark.png" media="(prefers-color-scheme: dark)">
-    <source srcset="./banner.png" media="(prefers-color-scheme: light)">
-    <img src="./banner.png" alt="Better Auth Logo">
-  </picture>
-  <h2 align="center">
-    Better Auth
-  </h2>
+# Better Auth Fork
 
-  <p align="center">
-    The most comprehensive authentication framework for TypeScript
-    <br />
-    <a href="https://better-auth.com"><strong>Learn more »</strong></a>
-    <br />
-    <br />
-    <a href="https://discord.gg/better-auth">Discord</a>
-    ·
-    <a href="https://better-auth.com">Website</a>
-    ·
-    <a href="https://github.com/better-auth/better-auth/issues">Issues</a>
-  </p>
+This is a fork of [Better Auth](https://github.com/better-auth/better-auth) that includes the `@btst` packages—a focused extraction of Better Auth's database layer.
 
-[![npm](https://img.shields.io/npm/dm/better-auth?style=flat&colorA=000000&colorB=000000)](https://npm.chart.dev/better-auth?primary=neutral&gray=neutral&theme=dark)
-[![npm version](https://img.shields.io/npm/v/better-auth.svg?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/better-auth)
-[![GitHub stars](https://img.shields.io/github/stars/better-auth/better-auth?style=flat&colorA=000000&colorB=000000)](https://github.com/better-auth/better-auth/stargazers)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/better-auth/better-auth)
-</p>
+## Purpose
 
-## About the Project
+This fork enables [Better Stack](https://github.com/better-stack-ai/better-stack), a composable full-stack plugin system for modern React frameworks. Better Stack uses the `@btst` packages for database schema definition, multi-ORM support, and CLI-driven migrations.
 
-Better Auth is framework-agnostic authentication (and authorization) library for TypeScript. It provides a comprehensive set of features out of the box and includes a plugin ecosystem that simplifies adding advanced functionalities with minimal code in short amount of time. Whether you need 2FA, multi-tenant support, or other complex features. It lets you focus on building your actual application instead of reinventing the wheel. 
+## @btst Packages
 
-### Why Better Auth
+The `@btst` packages provide Better Auth's proven adapter pattern and CLI tools, focused purely on database management without the auth domain:
 
-Authentication in the TypeScript ecosystem is a half-solved problem. Other open-source libraries often require a lot of additional code for anything beyond basic authentication. Rather than just pushing third-party services as the solution, I believe we can do better as a community—hence, Better Auth.
+- `@btst/db` — Schema definition with `defineDb()`
+- `@btst/cli` — Generate Prisma, Drizzle, and Kysely schemas
+- `@btst/adapter-prisma` — Prisma adapter
+- `@btst/adapter-drizzle` — Drizzle adapter
+- `@btst/adapter-kysely` — Kysely adapter
+- `@btst/adapter-mongodb` — MongoDB adapter
+- `@btst/adapter-memory` — In-memory adapter (testing)
 
-## Contribution
+📖 **[Full Documentation →](./packages/btst/README.md)**
 
-Better Auth is free and open source project licensed under the [MIT License](./LICENSE.md). You are free to do whatever you want with it.
+## Upstream
 
-You could help continuing its development by:
+This fork stays aligned with [Better Auth](https://github.com/better-auth/better-auth) updates. The core `better-auth` package remains unchanged.
 
-- [Contribute to the source code](./CONTRIBUTING.md)
-- [Suggest new features and report issues](https://github.com/better-auth/better-auth/issues)
+## License
 
-## Security
-If you discover a security vulnerability within Better Auth, please send an e-mail to security@better-auth.com.
-
-All reports will be promptly addressed, and you'll be credited accordingly.
+MIT © [Better Auth](https://github.com/better-auth/better-auth)

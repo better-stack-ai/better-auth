@@ -12,4 +12,4 @@ export { defineDb } from "./define-db";
 export { createDbPlugin } from "./plugin";
 
 // Export types for better DX
-export type { DbPlugin, Adapter, DatabaseDefinition } from "./types";
+export type { DbPlugin, Adapter, DBAdapter, DatabaseDefinition } from "./types";
