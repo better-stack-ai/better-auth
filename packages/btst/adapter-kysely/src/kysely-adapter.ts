@@ -1,8 +1,12 @@
 /**
- * ⚠️ AUTO-GENERATED - DO NOT MODIFY
+ * ⚠️ AUTO-GENERATED WITH PATCHES - DO NOT MODIFY
  * 
- * This file is automatically copied from better-auth.
+ * This file is automatically copied from better-auth with patches applied.
  * Source: packages/better-auth/src/adapters/kysely-adapter/kysely-adapter.ts
+ * 
+ * Patches applied:
+ * - @better-auth/core/utils imports replaced with local ../utils/string
+ *   (avoids dependency issues with published @better-auth/core package)
  * 
  * To update: run `pnpm sync-upstream`
  * Any manual changes will be overwritten.

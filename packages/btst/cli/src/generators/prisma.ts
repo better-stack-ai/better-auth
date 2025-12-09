@@ -1,8 +1,12 @@
 /**
- * ⚠️ AUTO-GENERATED - DO NOT MODIFY
+ * ⚠️ AUTO-GENERATED WITH PATCHES - DO NOT MODIFY
  * 
- * This file is automatically copied from better-auth.
+ * This file is automatically copied from better-auth with patches applied.
  * Source: packages/cli/src/generators/prisma.ts
+ * 
+ * Patches applied:
+ * - @better-auth/core/utils imports replaced with local ../utils/string
+ *   (avoids dependency issues with published @better-auth/core package)
  * 
  * To update: run `pnpm sync-upstream`
  * Any manual changes will be overwritten.
@@ -11,7 +15,7 @@
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { capitalizeFirstLetter } from "@better-auth/core/utils";
+import { capitalizeFirstLetter } from "../utils/string";
 import { produceSchema } from "@mrleebo/prisma-ast";
 import { initGetFieldName, initGetModelName } from "better-auth/adapters";
 import type { FieldType } from "better-auth/db";

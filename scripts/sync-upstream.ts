@@ -41,6 +41,22 @@ const HEADER_COMMENT = `/**
 
 `;
 
+const HEADER_COMMENT_WITH_PATCHES = `/**
+ * ⚠️ AUTO-GENERATED WITH PATCHES - DO NOT MODIFY
+ * 
+ * This file is automatically copied from better-auth with patches applied.
+ * Source: {SOURCE_PATH}
+ * 
+ * Patches applied:
+ * - @better-auth/core/utils imports replaced with local ../utils/string
+ *   (avoids dependency issues with published @better-auth/core package)
+ * 
+ * To update: run \`pnpm sync-upstream\`
+ * Any manual changes will be overwritten.
+ */
+
+`;
+
 interface CopyConfig {
 	from: string;
 	to: string;
@@ -83,7 +99,15 @@ const COPY_CONFIGS: CopyConfig[] = [
 		from: "packages/cli/src/generators",
 		to: "packages/btst/cli/src/generators",
 		files: ["drizzle.ts", "prisma.ts", "kysely.ts", "types.ts"],
-		// No transform needed - @better-auth/core is a peer dependency
+		transformImports: (content: string) => {
+			// Replace @better-auth/core/utils import with local string utility
+			// This avoids dependency issues since @better-auth/core may not export
+			// capitalizeFirstLetter from the /utils subpath in published versions
+			return content.replace(
+				/import\s*\{\s*capitalizeFirstLetter\s*\}\s*from\s*["']@better-auth\/core\/utils["'];?/g,
+				'import { capitalizeFirstLetter } from "../utils/string";',
+			);
+		},
 	},
 
 	// CLI Utils (required by generators)
@@ -106,16 +130,26 @@ async function copyFile(config: CopyConfig, file: string) {
 		return;
 	}
 
-	let content = await fs.readFile(sourcePath, "utf-8");
+	const originalContent = await fs.readFile(sourcePath, "utf-8");
+	let content = originalContent;
 
 	// Apply transform if provided
+	const wasTransformed =
+		config.transformImports &&
+		config.transformImports(content, path.relative(ROOT, sourcePath)) !==
+			content;
+
 	if (config.transformImports) {
 		content = config.transformImports(content, path.relative(ROOT, sourcePath));
 	}
 
 	// Add header comment with source path
+	// Use patched header if transforms were applied
 	const relativeSourcePath = path.relative(ROOT, sourcePath);
-	const header = HEADER_COMMENT.replace("{SOURCE_PATH}", relativeSourcePath);
+	const headerTemplate = wasTransformed
+		? HEADER_COMMENT_WITH_PATCHES
+		: HEADER_COMMENT;
+	const header = headerTemplate.replace("{SOURCE_PATH}", relativeSourcePath);
 	content = header + content;
 
 	// Ensure destination directory exists
@@ -123,6 +157,10 @@ async function copyFile(config: CopyConfig, file: string) {
 
 	// Write file
 	await fs.writeFile(destPath, content, "utf-8");
+
+	if (wasTransformed) {
+		console.log(`    ✨ Patches applied`);
+	}
 }
 
 async function validateSources() {
@@ -182,7 +220,8 @@ async function syncFiles() {
 	console.log(`✅ Sync complete! Copied ${totalFilesCopied} files.\n`);
 	console.log("📋 Summary:");
 	console.log("  • Kysely adapter vendored (imports fixed for better-auth/adapters)");
-	console.log("  • CLI generators and utils synced");
+	console.log("  • CLI generators synced (with @better-auth/core/utils → local utility patch)");
+	console.log("  • CLI utils synced");
 	console.log("  • Other adapters are thin wrappers (not vendored)");
 	console.log("\nNext steps:");
 	console.log("  1. Review the generated files");
