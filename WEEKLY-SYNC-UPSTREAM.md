@@ -185,11 +185,31 @@ pnpm build --filter "@btst/*"
 
 All builds must succeed with no errors before proceeding.
 
-### 9. Run `@btst` tests
+### 9. Run `@btst` tests and verify
+
+Run the test suite locally to catch any remaining issues:
 
 ```bash
-pnpm test --filter "@btst/*"
+pnpm turbo test --continue --filter="./packages/btst/*"
 ```
+
+**Expected result on a developer machine (no local databases):**
+
+- `@btst/db` tests — all pass
+- `@btst/adapter-memory` tests — all pass
+- `@btst/cli` `schema-conversion.test.ts` — all pass
+- `@btst/cli` `generate-all-orms.test.ts` — all pass (uses SQLite)
+- `@btst/cli` `e2e-cli.test.ts` — **fails** (needs live Postgres + MySQL — CI only)
+
+The e2e failures are expected locally. CI provides the databases.
+
+If `generate-all-orms.test.ts` has **snapshot failures**, update them — this means the generators produce slightly different output in the new version (normal for a minor upstream bump):
+
+```bash
+cd packages/btst/cli && pnpm vitest run -u
+```
+
+Commit the updated snapshots as part of the sync PR.
 
 ### 10. Commit and open a PR
 
@@ -235,6 +255,12 @@ Tag conventions:
 - **Docs conflicts are noise** — the `docs/` directory changes every release (new MDX pages, sidebar changes, component restructures). Always accept upstream's version; we don't host the docs.
 
 - **Upstream sometimes deletes GitHub Actions workflows** — in v1.5.4, `adapter-tests.yml`, `auto-cherry-pick-to-main.yml`, and `cherry-pick-to-main.yml` were removed. Accept those deletions. Our fork-only workflows (`better-db-release.yml`, `btst-ci.yml`) are not in conflict because upstream doesn't have them.
+
+- **`pnpm-workspace.yaml` catalog entries may disappear** — upstream removes catalog entries when they switch build tools. In v1.5.4, `unbuild` and `vitest` (default catalog) were removed because upstream switched to `tsdown` and moved vitest to a named sub-catalog. Our `@btst` packages still need them. If `pnpm install` fails with `ERR_PNPM_CATALOG_ENTRY_NOT_FOUND_FOR_SPEC`, add the missing entry back to the `catalog:` block in `pnpm-workspace.yaml` and re-run.
+
+- **New utility files in synced directories need to be added to `sync-upstream.ts`** — in v1.5.4, `helper.ts` was added to `packages/cli/src/utils/` and immediately imported by `get-package-info.ts`. Because it wasn't in the `files` list, the build failed. After a sync, if the build complains about a missing module in a synced path, check whether upstream added a new file that needs to be added to the relevant `COPY_CONFIGS` entry.
+
+- **Renamed exports in synced files cascade to our custom code** — `generateMigrations` was renamed to `generateKyselySchema` in the upstream CLI generators in v1.5.4. Our custom `generators/index.ts` and CLI commands referenced the old name and needed updating. After a sync, always check the build output for `"X is not exported by Y"` errors.
 
 - **Check the upstream changelog before syncing** — scan `https://github.com/better-auth/better-auth/releases` for anything database or adapter related. New adapter exports, new CLI flags, or changed field types may require updates to `@btst` package wrappers beyond what the sync script handles automatically.
 
