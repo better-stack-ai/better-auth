@@ -9,7 +9,7 @@ import type { BetterAuthOptions } from "better-auth";
 import {
 	generatePrismaSchema,
 	generateDrizzleSchema,
-	generateMigrations,
+	generateKyselySchema as generateMigrations,
 } from "../src/generators";
 import { filterAuthTables } from "../src/utils/filter-auth-tables";
 

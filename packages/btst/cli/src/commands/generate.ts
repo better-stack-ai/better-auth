@@ -12,7 +12,7 @@ import { createSpinner } from "../utils/spinner";
 import {
 	generatePrismaSchema,
 	generateDrizzleSchema,
-	generateMigrations,
+	generateKyselySchema as generateMigrations,
 } from "../generators";
 
 interface GenerateOptions {

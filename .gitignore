@@ -201,3 +201,4 @@ test-results/
 state.txt
 
 .cursor/
+docs/.source/index.ts

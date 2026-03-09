@@ -2,7 +2,7 @@
  * ⚠️ AUTO-GENERATED WITH PATCHES - DO NOT MODIFY
  * 
  * This file is automatically copied from better-auth with patches applied.
- * Source: packages/better-auth/src/adapters/kysely-adapter/dialect.ts
+ * Source: packages/kysely-adapter/src/dialect.ts
  * 
  * Patches applied:
  * - @better-auth/core/utils imports replaced with local ../utils/string
@@ -60,6 +60,10 @@ export function getKyselyDatabaseType(
 		return "sqlite";
 	}
 	if ("open" in db && "close" in db && "prepare" in db) {
+		return "sqlite";
+	}
+	// Cloudflare D1
+	if ("batch" in db && "exec" in db && "prepare" in db) {
 		return "sqlite";
 	}
 	return null;
@@ -124,11 +128,11 @@ export const createKyselyAdapter = async (config: BetterAuthOptions) => {
 		});
 	}
 
-	if ("createSession" in db && typeof window === "undefined") {
+	if ("createSession" in db) {
 		let DatabaseSync: typeof import("node:sqlite").DatabaseSync | undefined =
 			undefined;
 		try {
-			let nodeSqlite: string = "node:sqlite";
+			const nodeSqlite: string = "node:sqlite";
 			// Ignore both Vite and Webpack for dynamic import as they both try to pre-bundle 'node:sqlite' which might fail
 			// It's okay because we are in a try-catch block
 			({ DatabaseSync } = await import(
@@ -152,6 +156,14 @@ export const createKyselyAdapter = async (config: BetterAuthOptions) => {
 				database: db,
 			});
 		}
+	}
+
+	// Cloudflare D1
+	if ("batch" in db && "exec" in db && "prepare" in db) {
+		const { D1SqliteDialect } = await import("./d1-sqlite-dialect");
+		dialect = new D1SqliteDialect({
+			database: db,
+		});
 	}
 
 	return {

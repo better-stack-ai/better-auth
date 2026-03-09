@@ -2,7 +2,7 @@
  * ⚠️ AUTO-GENERATED - DO NOT MODIFY
  * 
  * This file is automatically copied from better-auth.
- * Source: packages/better-auth/src/adapters/kysely-adapter/bun-sqlite-dialect.ts
+ * Source: packages/kysely-adapter/src/bun-sqlite-dialect.ts
  * 
  * To update: run `pnpm sync-upstream`
  * Any manual changes will be overwritten.
@@ -157,7 +157,7 @@ class ConnectionMutex {
 	#resolve?: () => void;
 
 	async lock(): Promise<void> {
-		while (this.#promise) {
+		while (this.#promise !== undefined) {
 			await this.#promise;
 		}
 

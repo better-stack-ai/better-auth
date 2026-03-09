@@ -2,7 +2,7 @@
  * ⚠️ AUTO-GENERATED WITH PATCHES - DO NOT MODIFY
  * 
  * This file is automatically copied from better-auth with patches applied.
- * Source: packages/better-auth/src/adapters/kysely-adapter/kysely-adapter.ts
+ * Source: packages/kysely-adapter/src/kysely-adapter.ts
  * 
  * Patches applied:
  * - @better-auth/core/utils imports replaced with local ../utils/string
@@ -22,6 +22,7 @@ import type {
 	Where,
 } from "better-auth/adapters";
 import { createAdapterFactory } from "better-auth/adapters";
+import { capitalizeFirstLetter } from "./utils/string";
 import type {
 	InsertQueryBuilder,
 	Kysely,
@@ -165,14 +166,14 @@ export const kyselyAdapter = (
 				};
 
 				w.forEach((condition) => {
-					let {
+					const {
 						field: _field,
 						value: _value,
 						operator = "=",
 						connector = "AND",
 					} = condition;
-					let value: any = _value;
-					let field: string | any = getFieldName({
+					const value: any = _value;
+					const field: string | any = getFieldName({
 						model,
 						field: _field,
 					});
@@ -276,7 +277,13 @@ export const kyselyAdapter = (
 							fieldName,
 							joinModelRef,
 						} of allSelectsStr) {
-							if (keyStr === `_joined_${joinModelRef}_${fieldName}`) {
+							if (
+								keyStr === `_joined_${joinModelRef}_${fieldName}` ||
+								// Edge case to catch capitalized results that derive from snake_case table names
+								// If anyone can identify the cause behind this, please note it here.
+								keyStr ===
+									`_Joined${capitalizeFirstLetter(joinModelRef)}${capitalizeFirstLetter(fieldName)}`
+							) {
 								joinedModelFields[getModelName(joinModel)]![
 									getFieldName({
 										model: joinModel,
@@ -362,7 +369,7 @@ export const kyselyAdapter = (
 					}
 				}
 
-				let result = Array.from(groupedByMainId.values());
+				const result = Array.from(groupedByMainId.values());
 
 				// Apply final limit to non-unique join arrays as a safety measure
 				for (const entry of result) {
@@ -403,7 +410,14 @@ export const kyselyAdapter = (
 									eb.or(or.map((expr: any) => expr(eb))),
 								);
 							}
-							return b.selectAll().as("primary");
+							if (select?.length && select.length > 0) {
+								b = b.select(
+									select.map((field) => getFieldName({ model, field })),
+								);
+							} else {
+								b = b.selectAll();
+							}
+							return b.as("primary");
 						})
 						.selectAll("primary");
 
@@ -446,7 +460,7 @@ export const kyselyAdapter = (
 
 					return row as any;
 				},
-				async findMany({ model, where, limit, offset, sortBy, join }) {
+				async findMany({ model, where, limit, select, offset, sortBy, join }) {
 					const { and, or } = convertWhereClause(model, where);
 					let query: any = db
 						.selectFrom((eb) => {
@@ -489,7 +503,15 @@ export const kyselyAdapter = (
 								);
 							}
 
-							return b.selectAll().as("primary");
+							if (select?.length && select.length > 0) {
+								b = b.select(
+									select.map((field) => getFieldName({ model, field })),
+								);
+							} else {
+								b = b.selectAll();
+							}
+
+							return b.as("primary");
 						})
 						.selectAll("primary");
 
@@ -550,8 +572,10 @@ export const kyselyAdapter = (
 					if (or) {
 						query = query.where((eb) => eb.or(or.map((expr) => expr(eb))));
 					}
-					const res = await query.execute();
-					return res.length;
+					const res = (await query.executeTakeFirst()).numUpdatedRows;
+					return res > Number.MAX_SAFE_INTEGER
+						? Number.MAX_SAFE_INTEGER
+						: Number(res);
 				},
 				async count({ model, where }) {
 					const { and, or } = convertWhereClause(model, where);
@@ -595,7 +619,10 @@ export const kyselyAdapter = (
 					if (or) {
 						query = query.where((eb) => eb.or(or.map((expr) => expr(eb))));
 					}
-					return (await query.execute()).length;
+					const res = (await query.executeTakeFirst()).numDeletedRows;
+					return res > Number.MAX_SAFE_INTEGER
+						? Number.MAX_SAFE_INTEGER
+						: Number(res);
 				},
 				options: config,
 			};
@@ -619,7 +646,11 @@ export const kyselyAdapter = (
 				config?.type === "sqlite" || config?.type === "mssql" || !config?.type
 					? false
 					: true,
-			supportsJSON: false,
+			supportsJSON:
+				config?.type === "postgres"
+					? true // even if there is JSON support, only pg supports passing direct json, all others must stringify
+					: false,
+			supportsArrays: false, // Even if field supports JSON, we must pass stringified arrays to the database.
 			supportsUUIDs: config?.type === "postgres" ? true : false,
 			transaction: config?.transaction
 				? (cb) =>
