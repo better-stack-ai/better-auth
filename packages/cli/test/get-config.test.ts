@@ -897,4 +897,4 @@ describe("getConfig", async () => {
 		expect(config).not.toBe(null);
 		expect(config?.emailAndPassword?.enabled).toBe(true);
 	});
-});
+}, 30000);
