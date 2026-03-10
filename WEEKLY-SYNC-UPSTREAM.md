@@ -265,3 +265,9 @@ Tag conventions:
 - **Check the upstream changelog before syncing** — scan `https://github.com/better-auth/better-auth/releases` for anything database or adapter related. New adapter exports, new CLI flags, or changed field types may require updates to `@btst` package wrappers beyond what the sync script handles automatically.
 
 - **Versioning note** — `@btst/*` uses its own version scheme independent of `better-auth`. The current pattern: minor `@btst` bumps align with minor `better-auth` bumps (`better-auth@1.5.x` → `@btst@2.1.x`). This is documented in `packages/btst/DEVELOPMENT.md`.
+
+- **`ci.yml` and `e2e.yml` use upstream's private runner** — after merging upstream, `ci.yml` and `e2e.yml` will reference `runs-on: starsling-ubuntu-24.04`, a self-hosted runner registered only in the upstream org. Jobs on this runner will queue forever in our fork. Always replace every `starsling-ubuntu-24.04` with `ubuntu-latest` in both files after the merge:
+  ```bash
+  sed -i 's/runs-on: starsling-ubuntu-24\.04/runs-on: ubuntu-latest/g' \
+    .github/workflows/ci.yml .github/workflows/e2e.yml
+  ```
