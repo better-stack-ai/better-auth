@@ -148,6 +148,12 @@
 		],
 		"entry": ["**/*.test.ts", "**/*.spec.ts"]
 	},
-	"ignoreWorkspaces": ["demo/**", "landing/**", "docs/**", "e2e/**", "packages/btst/**"],
+	"ignoreWorkspaces": [
+		"demo/**",
+		"landing/**",
+		"docs/**",
+		"e2e/**",
+		"packages/btst/**"
+	],
 	"ignore": ["scripts/**"]
 }
