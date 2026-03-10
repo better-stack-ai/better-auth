@@ -24,10 +24,6 @@ export function getVerificationIdentifier(
 	return `_${tokenPrefix}-${providerId}`;
 }
 
-const domainVerificationBodySchema = z.object({
-	providerId: z.string(),
-});
-
 export const requestDomainVerification = (options: SSOOptions) => {
 	return createAuthEndpoint(
 		"/sso/request-domain-verification",

@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { getMigrations } from "better-auth/db";
+import { getMigrations } from "better-auth/db/migration";
 import prompts from "prompts";
 import path from "path";
 import fs from "fs/promises";
