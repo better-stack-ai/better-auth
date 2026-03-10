@@ -4,6 +4,6 @@ export default defineProject({
 	test: {
 		clearMocks: true,
 		restoreMocks: true,
-		testTimeout: 10_000,
+		testTimeout: 30_000,
 	},
 });

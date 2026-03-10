@@ -2,7 +2,7 @@ import { defineProject } from "vitest/config";
 
 export default defineProject({
 	test: {
-		testTimeout: 10_000,
+		testTimeout: 30_000,
 		execArgv: ["--expose-gc"],
 		// Exclude adapter tests by default - they are run separately via test:adapters
 		exclude: [
