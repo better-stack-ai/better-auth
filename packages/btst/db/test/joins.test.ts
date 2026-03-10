@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { defineDb } from "../src/define-db";
-import { memoryAdapter } from "better-auth/adapters/memory";
 import { webcrypto } from "node:crypto";
+import { memoryAdapter } from "better-auth/adapters/memory";
+import { beforeEach, describe, expect, it } from "vitest";
+import { defineDb } from "../src/define-db";
 
 // Mock crypto for tests
 if (!globalThis.crypto) {

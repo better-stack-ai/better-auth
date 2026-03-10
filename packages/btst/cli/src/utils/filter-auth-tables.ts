@@ -24,7 +24,7 @@ export const DEFAULT_AUTH_MODELS = [
  */
 export function filterPrismaAuthTables(code: string): string {
 	const lines = code.split("\n");
-	let filteredLines: string[] = [];
+	const filteredLines: string[] = [];
 	let inAuthModel = false;
 	let bracketCount = 0;
 
@@ -58,7 +58,7 @@ export function filterPrismaAuthTables(code: string): string {
 		// Skip relation fields to auth tables
 		const relationMatch = line.match(/@relation.*references:\s*\[(\w+)\]/);
 		if (relationMatch) {
-			const refField = relationMatch[1];
+			const _refField = relationMatch[1];
 			// Skip if it references an auth table's field
 			const prevLine = lines[i - 1];
 			if (
@@ -88,7 +88,7 @@ export function filterPrismaAuthTables(code: string): string {
  */
 export function filterDrizzleAuthTables(code: string): string {
 	const lines = code.split("\n");
-	let filteredLines: string[] = [];
+	const filteredLines: string[] = [];
 	let inAuthTable = false;
 	let parenCount = 0;
 
@@ -173,7 +173,7 @@ export function filterDrizzleAuthTables(code: string): string {
  */
 export function filterKyselyAuthTables(code: string): string {
 	const lines = code.split("\n");
-	let filteredLines: string[] = [];
+	const filteredLines: string[] = [];
 	let inAuthTable = false;
 
 	for (const line of lines) {

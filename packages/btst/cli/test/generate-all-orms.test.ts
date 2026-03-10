@@ -1,15 +1,15 @@
-import { describe, expect, it } from "vitest";
-import { prismaAdapter } from "better-auth/adapters/prisma";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { defineDb, createDbPlugin } from "@btst/db";
-import Database from "better-sqlite3";
+import { createDbPlugin, defineDb } from "@btst/db";
 import type { BetterAuthOptions } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { prismaAdapter } from "better-auth/adapters/prisma";
+import Database from "better-sqlite3";
+import { describe, expect, it } from "vitest";
 
 // Import generators from local package
 import {
-	generatePrismaSchema,
 	generateDrizzleSchema,
 	generateKyselySchema as generateMigrations,
+	generatePrismaSchema,
 } from "../src/generators";
 import { filterAuthTables } from "../src/utils/filter-auth-tables";
 
@@ -327,26 +327,26 @@ describe("Generate Kysely migrations with real database", () => {
 	it("should generate Kysely migrations for SQLite", async () => {
 		const betterAuthSchema = testDb.getSchema();
 
-	// Use real SQLite database for introspection
-	const sqliteDb = new Database(":memory:");
+		// Use real SQLite database for introspection
+		const sqliteDb = new Database(":memory:");
 
-	const result = await generateMigrations({
-		adapter: {} as any,
-		options: {
-			database: sqliteDb,
-			experimental: { joins: true },
-			plugins: [{ id: "better-db", schema: betterAuthSchema }],
-		},
-		file: "test-kysely.sql",
+		const result = await generateMigrations({
+			adapter: {} as any,
+			options: {
+				database: sqliteDb,
+				experimental: { joins: true },
+				plugins: [{ id: "better-db", schema: betterAuthSchema }],
+			},
+			file: "test-kysely.sql",
+		});
+
+		const filteredCode = filterAuthTables(result.code || "", "kysely");
+		await expect(filteredCode).toMatchFileSnapshot(
+			"./__snapshots__/kysely-sqlite.sql",
+		);
+
+		sqliteDb.close();
 	});
-
-	const filteredCode = filterAuthTables(result.code || "", "kysely");
-	await expect(filteredCode).toMatchFileSnapshot(
-		"./__snapshots__/kysely-sqlite.sql",
-	);
-
-	sqliteDb.close();
-});
 
 	it("should generate Kysely migrations with filter-auth", async () => {
 		const betterAuthSchema = testDb.getSchema();

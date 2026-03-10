@@ -1,6 +1,6 @@
 // Integration test to verify the btst API works as expected
-import { describe, it, expect } from "vitest";
-import { defineDb, createDbPlugin } from "../src/index";
+import { describe, expect, it } from "vitest";
+import { createDbPlugin, defineDb } from "../src/index";
 
 describe("@btst/db integration", () => {
 	it("should create schema with defineDb", () => {

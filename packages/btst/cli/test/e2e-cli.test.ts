@@ -1,8 +1,8 @@
-import { describe, it, expect, afterEach } from "vitest";
-import { exec } from "child_process";
-import { promisify } from "util";
-import fs from "fs/promises";
-import path from "path";
+import { exec } from "node:child_process";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { promisify } from "node:util";
+import { afterEach, describe, expect, it } from "vitest";
 
 const execAsync = promisify(exec);
 
@@ -43,7 +43,7 @@ export default defineDb({
 		const outputPath = path.join(testDir, "schema.prisma");
 
 		// Run actual CLI command
-		const { stdout, stderr } = await execAsync(
+		const { stdout: _stdout, stderr: _stderr } = await execAsync(
 			`node ./dist/index.mjs generate --config=${testSchema} --orm=prisma --output=${outputPath} --yes`,
 			{ cwd: process.cwd() },
 		);
@@ -84,7 +84,7 @@ export default defineDb({
 
 		const outputPath = path.join(testDir, "schema.ts");
 
-		const { stdout } = await execAsync(
+		const { stdout: _stdout } = await execAsync(
 			`node ./dist/index.mjs generate --config=${testSchema} --orm=drizzle --output=${outputPath} --yes`,
 			{ cwd: process.cwd() },
 		);
@@ -131,7 +131,7 @@ export { handler, dbSchema };
 		const outputPath = path.join(testDir, "named-export-schema.prisma");
 
 		// Run generate command with named export schema
-		const { stdout } = await execAsync(
+		const { stdout: _stdout } = await execAsync(
 			`node ./dist/index.mjs generate --config=${namedExportSchema} --orm=prisma --output=${outputPath} --yes`,
 			{ cwd: process.cwd() },
 		);
@@ -213,7 +213,7 @@ export default defineDb({
 		const dbPath = path.join(testDir, "test.db");
 
 		// Run with SQLite DATABASE_URL
-		const { stdout } = await execAsync(
+		const { stdout: _stdout } = await execAsync(
 			`node ./dist/index.mjs generate --config=${testSchema} --orm=kysely --output=${outputPath} --yes`,
 			{
 				cwd: process.cwd(),
@@ -258,7 +258,7 @@ export default defineDb({
 		const dbPath = path.join(testDir, "test-flag.db");
 
 		// Run with --database-url flag (no DATABASE_URL env var)
-		const { stdout } = await execAsync(
+		const { stdout: _stdout } = await execAsync(
 			`node ./dist/index.mjs generate --config=${testSchema} --orm=kysely --output=${outputPath} --database-url=sqlite:${dbPath} --yes`,
 			{
 				cwd: process.cwd(),
@@ -304,7 +304,7 @@ export default defineDb({
 
 		// Run with both --database-url flag and DATABASE_URL env var
 		// Flag should take priority
-		const { stdout } = await execAsync(
+		const { stdout: _stdout } = await execAsync(
 			`node ./dist/index.mjs generate --config=${testSchema} --orm=kysely --output=${outputPath} --database-url=sqlite:${flagDbPath} --yes`,
 			{
 				cwd: process.cwd(),
@@ -350,7 +350,7 @@ export default defineDb({
 
 		// Test with postgres:// prefix (both formats should work)
 		// Using postgres-kysely container on port 5433
-		const { stdout } = await execAsync(
+		const { stdout: _stdout } = await execAsync(
 			`node ./dist/index.mjs generate --config=${testSchema} --orm=kysely --output=${outputPath} --yes`,
 			{
 				cwd: process.cwd(),
@@ -398,7 +398,7 @@ export default defineDb({
 
 		// Test with postgresql:// prefix (the issue we fixed)
 		// Using postgres-kysely container on port 5433
-		const { stdout } = await execAsync(
+		const { stdout: _stdout } = await execAsync(
 			`node ./dist/index.mjs generate --config=${testSchema} --orm=kysely --output=${outputPath} --yes`,
 			{
 				cwd: process.cwd(),
@@ -445,7 +445,7 @@ export default defineDb({
 		const outputPath = path.join(testDir, "migrations-mysql.sql");
 
 		// Test MySQL connection using mysql-kysely container on port 3307
-		const { stdout } = await execAsync(
+		const { stdout: _stdout } = await execAsync(
 			`node ./dist/index.mjs generate --config=${testSchema} --orm=kysely --output=${outputPath} --yes`,
 			{
 				cwd: process.cwd(),
@@ -586,7 +586,7 @@ export { handler, dbSchema };
 		await pool.end();
 
 		// Run migrate command with named export schema
-		const { stdout } = await execAsync(
+		const { stdout: _stdout } = await execAsync(
 			`node ./dist/index.mjs migrate --config=${namedExportSchema} --output=${outputPath} --yes`,
 			{
 				cwd: process.cwd(),
@@ -805,7 +805,7 @@ export default defineDb({
 		await pool.end();
 
 		// Run migrate with --output (filtering by default)
-		const { stdout } = await execAsync(
+		const { stdout: _stdout } = await execAsync(
 			`node ./dist/index.mjs migrate --config=${testSchema} --output=${outputPath} --yes`,
 			{
 				cwd: process.cwd(),
@@ -1043,7 +1043,7 @@ export default defineDb({
 		await connection.end();
 
 		// Run migrate for MySQL (filtering by default)
-		const { stdout } = await execAsync(
+		const { stdout: _stdout } = await execAsync(
 			`node ./dist/index.mjs migrate --config=${testSchema} --output=${outputPath} --yes`,
 			{
 				cwd: process.cwd(),

@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { defineDb, createDbPlugin } from "@btst/db";
+import { createDbPlugin, defineDb } from "@btst/db";
+import { describe, expect, it } from "vitest";
 
 /**
  * Tests for btst schema definition

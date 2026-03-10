@@ -1,7 +1,7 @@
-import { Command } from "commander";
+import fs from "node:fs/promises";
+import path from "node:path";
 import chalk from "chalk";
-import fs from "fs/promises";
-import path from "path";
+import { Command } from "commander";
 
 interface InitOptions {
 	cwd: string;

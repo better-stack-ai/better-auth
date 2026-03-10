@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+
 /**
  * Sync Script: Copy files from better-auth to @btst packages
  *
@@ -24,11 +25,10 @@
  * Run: pnpm tsx scripts/sync-upstream.ts
  */
 
-import fs from "fs/promises";
-import path from "path";
-import { existsSync } from "fs";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
+import { existsSync } from "node:fs";
+import fs from "node:fs/promises";
+import path, { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -92,10 +92,7 @@ const COPY_CONFIGS: CopyConfig[] = [
 			// Map @better-auth/core subpath imports to their published equivalents.
 			// Note: @better-auth/core/utils/string (v1.5.4+) replaces the old /utils path.
 			return content
-				.replace(
-					/from ["']@better-auth\/core["']/g,
-					'from "better-auth/types"',
-				)
+				.replace(/from ["']@better-auth\/core["']/g, 'from "better-auth/types"')
 				.replace(
 					/from ["']@better-auth\/core\/db\/adapter["']/g,
 					'from "better-auth/adapters"',
@@ -127,10 +124,7 @@ const COPY_CONFIGS: CopyConfig[] = [
 	{
 		from: "packages/cli/src/utils",
 		to: "packages/btst/cli/src/utils",
-		files: [
-			"get-package-info.ts",
-			"helper.ts",
-		],
+		files: ["get-package-info.ts", "helper.ts"],
 		// No transform needed - files already use proper package imports
 	},
 ];
@@ -213,7 +207,9 @@ async function validateSources() {
 
 async function syncFiles() {
 	console.log("🔄 Syncing upstream files to @btst packages...\n");
-	console.log("📝 Note: Most adapters are simple re-exports, except Kysely (not exported by better-auth)\n");
+	console.log(
+		"📝 Note: Most adapters are simple re-exports, except Kysely (not exported by better-auth)\n",
+	);
 
 	await validateSources();
 
@@ -235,13 +231,17 @@ async function syncFiles() {
 
 	console.log(`✅ Sync complete! Copied ${totalFilesCopied} files.\n`);
 	console.log("📋 Summary:");
-	console.log("  • Kysely adapter vendored (imports fixed for better-auth/adapters)");
-	console.log("  • CLI generators synced (with @better-auth/core/utils → local utility patch)");
+	console.log(
+		"  • Kysely adapter vendored (imports fixed for better-auth/adapters)",
+	);
+	console.log(
+		"  • CLI generators synced (with @better-auth/core/utils → local utility patch)",
+	);
 	console.log("  • CLI utils synced");
 	console.log("  • Other adapters are thin wrappers (not vendored)");
 	console.log("\nNext steps:");
 	console.log("  1. Review the generated files");
-	console.log("  2. Run `pnpm build --filter \"@btst/*\"` to rebuild packages");
+	console.log('  2. Run `pnpm build --filter "@btst/*"` to rebuild packages');
 	console.log("  3. Test your changes");
 }
 

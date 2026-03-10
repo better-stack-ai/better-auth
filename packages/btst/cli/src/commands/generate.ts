@@ -1,19 +1,18 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import type { BetterAuthOptions } from "better-auth";
 import { Command } from "commander";
 import prompts from "prompts";
-import fs from "fs/promises";
-import path from "path";
+// Import generators from local generators package
+import {
+	generateDrizzleSchema,
+	generateKyselySchema as generateMigrations,
+	generatePrismaSchema,
+} from "../generators";
 import { filterAuthTables } from "../utils/filter-auth-tables";
-import type { BetterAuthOptions } from "better-auth";
 import { logger } from "../utils/logger";
 import { loadBetterDbSchema } from "../utils/schema-loader";
 import { createSpinner } from "../utils/spinner";
-
-// Import generators from local generators package
-import {
-	generatePrismaSchema,
-	generateDrizzleSchema,
-	generateKyselySchema as generateMigrations,
-} from "../generators";
 
 interface GenerateOptions {
 	config: string; // REQUIRED
