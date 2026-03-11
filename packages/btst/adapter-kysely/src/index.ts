@@ -1,11 +1,12 @@
 // Kysely adapter for @btst
 // Vendored from better-auth for independent publishing
-export * from "./types";
+
 export * from "./kysely-adapter";
+export * from "./types";
 
 import type { Adapter, DatabaseDefinition } from "@btst/db";
-import type { Kysely } from "kysely";
 import type { BetterAuthOptions } from "better-auth/types";
+import type { Kysely } from "kysely";
 import { kyselyAdapter } from "./kysely-adapter";
 import type { KyselyDatabaseType } from "./types";
 

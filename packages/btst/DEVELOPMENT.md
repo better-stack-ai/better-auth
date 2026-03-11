@@ -1,6 +1,6 @@
 # Development Guide
 
-Guide for contributors and maintainers of Better DB.
+Guide for contributors and maintainers of Better DB (`@btst/*`).
 
 ## Architecture
 
@@ -14,11 +14,16 @@ Better DB is a **thin wrapper** around Better Auth's database layer. This allows
 
 ```
 packages/btst/
-├── db/                   # @btst/db - DSL and types
-├── cli/                    # @btst/cli - Schema generation
-├── adapter-*/              # @btst/adapter-* - Adapter wrappers
-├── plugins/                # @btst/plugins - Common plugins
-└── README.md              # Shared across all packages
+├── db/                   # @btst/db — defineDb() DSL, types, plugin system
+├── cli/                  # @btst/cli — schema generation CLI
+├── adapter-drizzle/      # @btst/adapter-drizzle — thin re-export
+├── adapter-kysely/       # @btst/adapter-kysely — vendored + wrapped
+├── adapter-memory/       # @btst/adapter-memory — thin re-export
+├── adapter-mongodb/      # @btst/adapter-mongodb — thin re-export
+├── adapter-prisma/       # @btst/adapter-prisma — thin re-export
+├── plugins/              # @btst/plugins — reusable table definitions
+├── DEVELOPMENT.md        # this file
+└── README.md             # shared README (copied to each package on release)
 ```
 
 ### What We Add
@@ -36,29 +41,29 @@ Everything else is a direct re-export from Better Auth.
 # Install dependencies
 pnpm install
 
-# Build Better Auth (required)
-pnpm build --filter better-auth
-
-# Build Better DB packages
-pnpm build --filter "@btst/*"
+# Build @btst packages (builds all dependencies automatically)
+pnpm turbo build --filter="./packages/btst/*"
 
 # Run tests
-pnpm test --filter "@btst/*"
+pnpm turbo test --filter="./packages/btst/*"
 ```
+
+> **Note:** Some e2e CLI tests require live Postgres and MySQL connections.
+> These only run fully in CI. See [Testing](#testing) for details.
 
 ## Key Principles
 
 ### 1. Wrapper-First
 
-✅ **DO**: Re-export Better Auth functionality
+**DO:** Re-export Better Auth functionality
 ```typescript
 export * from "better-auth/adapters/prisma";
 ```
 
-❌ **DON'T**: Duplicate Better Auth logic
+**DON'T:** Duplicate Better Auth logic
 ```typescript
 export function createPrismaAdapter(prisma) {
-  // reimplemented logic
+  // reimplemented logic — don't do this
 }
 ```
 
@@ -68,9 +73,10 @@ Only add what's necessary for the database-focused API. Everything else should b
 
 ### 3. Version Alignment
 
-- Pin to Better Auth versions: `@btst/*@1.4.x` → `better-auth@1.4.x`
+- `@btst/*@2.1.x` tracks `better-auth@1.5.x`
+- Minor `@btst` bump = minor `better-auth` bump (1.4→1.5 maps to 2.0→2.1)
+- Patch `@btst` bump = patch `better-auth` bump only
 - Import from Better Auth internally: `import ... from "better-auth/..."`
-- Export as `@btst/*` for users
 
 ## Making Changes
 
@@ -82,18 +88,26 @@ Only add what's necessary for the database-focused API. Everything else should b
 
 ### Adapters (`packages/btst/adapter-*/`)
 
-- Should only contain re-exports
-- Update `src/index.ts` if Better Auth changes exports
+Most adapters are **thin re-exports** — they only contain:
+```typescript
+export * from "better-auth/adapters/prisma";
+```
+
+The exception is **`@btst/adapter-kysely`**, which is **vendored** because
+`@better-auth/kysely-adapter` is not bundled into the published `better-auth` package.
+Its source is synced by `scripts/sync-upstream.ts`.
 
 ### CLI (`packages/btst/cli/`)
 
-- Wraps Better Auth CLI
-- Filters auth domain models
-- Test with all ORMs (Prisma, Drizzle, Kysely)
+- Wraps Better Auth CLI generators
+- Filters auth domain models out of generated schemas
 - Key files:
-  - `src/commands/init.ts` - Schema initialization
-  - `src/commands/generate.ts` - Schema generation
-  - `src/commands/migrate.ts` - Migration wrapper
+  - `src/commands/generate.ts` — schema generation command
+  - `src/commands/migrate.ts` — migration wrapper
+  - `src/generators/index.ts` — generator registry (custom; not synced)
+  - `src/generators/drizzle.ts` — synced from upstream
+  - `src/generators/prisma.ts` — synced from upstream
+  - `src/generators/kysely.ts` — synced from upstream
 
 ### Plugins (`packages/btst/plugins/`)
 
@@ -103,162 +117,204 @@ Only add what's necessary for the database-focused API. Everything else should b
 
 ## Upstream Sync
 
-### Setup
+The `scripts/sync-upstream.ts` script copies specific files from upstream into `@btst` packages.
+For the full step-by-step runbook, see [WEEKLY-SYNC-UPSTREAM.md](../../WEEKLY-SYNC-UPSTREAM.md).
+
+### What Gets Synced
+
+| Source (monorepo path) | Destination | Notes |
+|------------------------|-------------|-------|
+| `packages/kysely-adapter/src/` | `packages/btst/adapter-kysely/src/` | Vendored; source moved here in v1.5.4 |
+| `packages/cli/src/generators/` | `packages/btst/cli/src/generators/` | drizzle.ts, prisma.ts, kysely.ts, types.ts |
+| `packages/cli/src/utils/` | `packages/btst/cli/src/utils/` | get-package-info.ts, helper.ts |
+
+> **v1.5.4 change:** The Kysely adapter was extracted from
+> `packages/better-auth/src/adapters/kysely-adapter/` into a standalone
+> `packages/kysely-adapter/` package (published as `@better-auth/kysely-adapter`).
+> The sync script was updated to point to the new location.
+
+### Running the Sync
 
 ```bash
-# One-time: add upstream remote
-git remote add upstream https://github.com/better-auth/better-auth.git
-
-# Sync main branch
-git fetch upstream
-git checkout main
-git merge upstream/main
+pnpm tsx scripts/sync-upstream.ts
 ```
 
-### GitHub Actions
+The script will print which files it copied and whether import patches were applied.
+It **validates all source paths first** and fails with a clear error if any are missing
+(which means the upstream restructured something that needs a script update).
 
-Workflows use repository conditionals to prevent conflicts:
+### Import Transforms Applied
 
-**Skip on forks:**
-- `release.yml` - npm publishing
-- `main-protect.yml` - branch rules
-- `preview.yml` - preview builds
+The sync script applies two categories of transforms:
 
-**Run on forks:**
-- `ci.yml` - tests, builds, linting
-- `e2e.yml` - integration tests
+1. **`@better-auth/core` → published equivalents** (in vendored kysely adapter):
+   - `@better-auth/core` → `better-auth/types`
+   - `@better-auth/core/db/adapter` → `better-auth/adapters`
+   - `@better-auth/core/utils/string` → `./utils/string` (local file in adapter-kysely)
 
-**Fork-only:**
-- `btst-release.yml` - Publishes `@btst/*` packages
-  - Triggered by `btst-v*` tags
-  - Uses `if: github.repository != 'better-auth/better-auth'`
+2. **`@better-auth/core/utils/string` → local utility** (in CLI generators):
+   - `@better-auth/core/utils/string` → `../utils/string`
+
+Files that received patches are marked with `⚠️ AUTO-GENERATED WITH PATCHES` headers.
 
 ### When Better Auth Updates
 
-1. Sync main branch with upstream
-2. Review Better Auth changelog for database changes
-3. Run integration tests
-4. Update any new exports in `@btst/*` packages
-5. Bump versions to match Better Auth minor version
-6. Test CLI generation
+1. Fetch upstream and check what changed:
+   ```bash
+   git fetch upstream
+   git diff --name-only HEAD..upstream/main -- packages/kysely-adapter/ packages/cli/src/generators/ packages/cli/src/utils/
+   ```
+2. Merge `upstream/main` and resolve conflicts (accept upstream for all non-btst files)
+3. Check if `sync-upstream.ts` source paths still exist — run the script and read errors
+4. Update `sync-upstream.ts` if new files were added or paths changed
+5. Run `pnpm tsx scripts/sync-upstream.ts`
+6. Fix any import issues in `@btst` custom files that reference synced exports (e.g. if a function is renamed)
+7. Update snapshot tests: `cd packages/btst/cli && pnpm vitest run -u`
+8. Bump all `@btst` versions and `peerDependencies`
+9. Build and test: `pnpm turbo build --filter="./packages/btst/*" && pnpm turbo test --filter="./packages/btst/*"`
+10. See [WEEKLY-SYNC-UPSTREAM.md](../../WEEKLY-SYNC-UPSTREAM.md) for the full runbook
+
+### `pnpm-workspace.yaml` Catalog
+
+After merging upstream, check that the catalog still includes everything `@btst` packages need.
+Upstream sometimes removes catalog entries when they switch build tools. Currently required in the
+default catalog that upstream may not include:
+
+- `unbuild` — `@btst` packages use `unbuild` (upstream switched to `tsdown` in v1.5.x)
+- `vitest` — listed separately in `catalogs.vitest` by upstream, but `@btst` packages reference the default `catalog:`
+
+If `pnpm install` fails with `ERR_PNPM_CATALOG_ENTRY_NOT_FOUND_FOR_SPEC`, add the missing entry
+back to the `catalog:` block in `pnpm-workspace.yaml`.
 
 ## Testing
 
-```bash
-# All tests
-pnpm test --filter "@btst/*"
-
-# Specific package
-pnpm test --filter "@btst/db"
-pnpm test --filter "@btst/cli"
-
-# Manual CLI testing
-npx btst init --output=test-schema.ts
-npx btst generate --config=test-schema.ts --orm=prisma --yes
-```
-
 ### Test Coverage
 
-- **Unit**: Field builder, schema transformation, plugin composition
-- **Integration**: CLI generation, adapter functionality, field types
-- **Compatibility**: Better Auth version compatibility, re-exports
+- **Unit:** Field builder, schema transformation, plugin composition (`@btst/db`)
+- **Integration (local):** CLI generation with SQLite, adapter functionality, field types (`@btst/cli`)
+- **E2E (CI only):** CLI generation + migrations with live Postgres and MySQL (`@btst/cli`)
+- **Compatibility:** Memory adapter, re-exports (`@btst/adapter-memory`)
+
+### Local Testing
+
+```bash
+# All @btst tests (e2e tests will fail without databases — that is expected)
+pnpm turbo test --filter="./packages/btst/*"
+
+# Specific packages
+pnpm turbo test --filter="@btst/db"
+pnpm turbo test --filter="@btst/cli"
+pnpm turbo test --filter="@btst/adapter-memory"
+
+# Update snapshots after upstream sync changes generator output
+cd packages/btst/cli && pnpm vitest run -u
+```
+
+### CI Tests (full suite)
+
+CI (`btst-ci.yml`) runs on every PR touching `packages/btst/**` or `scripts/sync-upstream.ts`.
+It provides live Postgres (port 5433) and MySQL (port 3307) for the e2e tests:
+
+```bash
+# CI equivalent (requires live databases)
+pnpm turbo build --filter="./packages/btst/*"
+DATABASE_URL_POSTGRES=postgresql://user:password@localhost:5433/better_auth \
+DATABASE_URL_MYSQL=mysql://user:password@localhost:3307/better_auth \
+pnpm turbo test --continue --filter="./packages/btst/*"
+```
+
+### What Passes Locally vs CI Only
+
+| Test file | Local | CI |
+|-----------|-------|----|
+| `@btst/db` unit tests | ✅ | ✅ |
+| `@btst/adapter-memory` tests | ✅ | ✅ |
+| `@btst/cli` schema-conversion.test.ts | ✅ | ✅ |
+| `@btst/cli` generate-all-orms.test.ts | ✅ (SQLite) | ✅ (all DBs) |
+| `@btst/cli` e2e-cli.test.ts | ❌ (no DB) | ✅ |
 
 ## Release Process
 
 ### Automated Release (Recommended)
 
-**Prerequisites:**
-- Add `NPM_TOKEN` to GitHub repository secrets
+**Prerequisites:** `NPM_TOKEN` in GitHub repository secrets.
 
-**Method 1: GitHub UI**
-
-1. Update versions:
+1. Bump versions (all 8 packages together):
    ```bash
-   cd packages/btst
-   pnpm version <major|minor|patch> --workspace
-   git add . && git commit -m "chore: bump to v1.x.x" && git push
+   # Edit each packages/btst/*/package.json:
+   # "version": "2.1.0" (or next version)
+   # peerDependencies: "better-auth": ">=1.5.0"
    ```
 
-2. Create release at `github.com/[user]/better-auth/releases/new`
-   - Tag: `btst-v1.4.0`
-   - Click "Create new tag on publish"
+2. Commit, push, and tag:
+   ```bash
+   git add packages/btst/*/package.json
+   git commit -m "chore: bump @btst to v2.1.0"
+   git push
+   git tag btst-v2.1.0
+   git push origin btst-v2.1.0
+   ```
 
-**Method 2: CLI**
+3. Create a GitHub Release from the `btst-v2.1.0` tag in the GitHub UI.
 
-```bash
-# Update versions
-cd packages/btst
-pnpm version <major|minor|patch> --workspace
+The `better-db-release.yml` workflow automatically:
+- Builds all packages
+- Copies README to each package
+- Publishes to npm with the correct tag
 
-# Commit and tag
-git add . && git commit -m "chore: release v1.4.0"
-git push
-git tag btst-v1.4.0
-git push origin btst-v1.4.0
-```
-
-The GitHub Action will automatically:
-- Generate changelog
-- Build packages
-- Copy README to each package
-- Publish to npm with correct tag
-
-**Tag Conventions:**
-- `btst-v1.4.0` → `latest`
-- `btst-v1.4.0-beta.1` → `beta`
+**Tag → npm tag mapping:**
+- `btst-v2.1.0` → `latest`
+- `btst-v2.1.0-beta.1` → `beta`
 - Supported: `alpha`, `beta`, `rc`, `canary`, `next`
 
 ### Manual Release
 
 ```bash
-# Build
-pnpm build --filter "@btst/*"
+pnpm turbo build --filter="./packages/btst/*"
 
-# Publish each package
-cd packages/btst/db
-pnpm publish --access public --tag latest
-# Repeat for cli, plugins, and adapters
+cd packages/btst/db && pnpm publish --access public --tag latest
+cd packages/btst/cli && pnpm publish --access public --tag latest
+cd packages/btst/plugins && pnpm publish --access public --tag latest
+cd packages/btst/adapter-drizzle && pnpm publish --access public --tag latest
+cd packages/btst/adapter-kysely && pnpm publish --access public --tag latest
+cd packages/btst/adapter-memory && pnpm publish --access public --tag latest
+cd packages/btst/adapter-mongodb && pnpm publish --access public --tag latest
+cd packages/btst/adapter-prisma && pnpm publish --access public --tag latest
 ```
 
 ### Pre-Release Checklist
 
-- [ ] Test with latest Better Auth version
-- [ ] Update all package versions consistently
-- [ ] Verify clean builds
-- [ ] Test CLI with all ORMs
-- [ ] Update README if needed
-- [ ] Push git tag
+- [ ] All `@btst` package versions bumped consistently
+- [ ] `peerDependencies` version ranges updated
+- [ ] `pnpm turbo build --filter="./packages/btst/*"` succeeds with no errors
+- [ ] Local tests pass (`pnpm turbo test --filter="./packages/btst/*"`)
+- [ ] Snapshot tests updated if generator output changed
+- [ ] PR merged to `main`
+- [ ] Git tag pushed
 
 ## README Management
 
 All `@btst/*` packages share `packages/btst/README.md`:
 
-- During release, README is copied to each package directory
-- Each `package.json` includes `"README.md"` in `files` array
-- `.gitignore` excludes copied READMEs
+- During release, the workflow copies it to each package directory
+- Each `package.json` includes `"README.md"` in the `files` array
 - Single source of truth for documentation
 
 ## Common Issues
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| Module resolution errors | Better Auth not built | `pnpm build --filter better-auth` |
-| CLI generation failures | Schema format incompatibility | Check `toBetterAuthSchema()` in core |
-| Type errors | Missing re-exports | Update type exports in wrappers |
+| `pnpm install` fails with `CATALOG_ENTRY_NOT_FOUND` | Upstream removed an entry from `pnpm-workspace.yaml` catalog | Add the missing entry (`unbuild`, `vitest`) back to the `catalog:` block |
+| Build fails: `Could not resolve "../utils/string"` | Kysely adapter's `capitalizeFirstLetter` import not resolving | Check `packages/btst/adapter-kysely/src/utils/string.ts` exists |
+| Build fails: `X is not exported by "kysely.ts"` | Upstream renamed a generator function | Update `src/generators/index.ts` to use the new name |
+| Sync script fails: `Source directory not found` | Upstream restructured a package (e.g. moved kysely adapter) | Update the `from` path in `COPY_CONFIGS` in `scripts/sync-upstream.ts` |
+| Snapshot test failures after sync | Generator output changed upstream | Run `cd packages/btst/cli && pnpm vitest run -u` to update snapshots |
+| E2E tests fail locally | No live Postgres/MySQL | Expected; only runs fully in CI |
 
 ## Contributing
 
-1. Follow wrapper pattern—don't duplicate logic
-2. Test with latest Better Auth
+1. Follow wrapper pattern — don't duplicate logic
+2. Test with `pnpm turbo test --filter="./packages/btst/*"` before pushing
 3. Keep diffs small for easy syncing
-4. Add integration tests
-5. Update documentation
-
-## Maintenance
-
-- [ ] Monitor Better Auth releases
-- [ ] Keep dependencies aligned
-- [ ] Test CLI with latest Better Auth
-- [ ] Update docs for API changes
-- [ ] Verify adapter re-exports
-- [ ] Check integration tests pass
+4. Add integration tests for new features
+5. Update this doc and `WEEKLY-SYNC-UPSTREAM.md` when the sync process changes

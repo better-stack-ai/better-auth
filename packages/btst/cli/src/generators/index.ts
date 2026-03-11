@@ -1,18 +1,23 @@
-import { logger, type Adapter, type BetterAuthOptions } from "better-auth";
+import type { Adapter, BetterAuthOptions } from "better-auth";
+import { logger } from "better-auth";
 import { generateDrizzleSchema } from "./drizzle";
+import { generateKyselySchema } from "./kysely";
 import { generatePrismaSchema } from "./prisma";
-import { generateMigrations } from "./kysely";
 
 // Re-export all generators and types for use by other packages
 export { generateDrizzleSchema } from "./drizzle";
+/** @deprecated use generateKyselySchema instead */
+export {
+	generateKyselySchema,
+	generateKyselySchema as generateMigrations,
+} from "./kysely";
 export { generatePrismaSchema } from "./prisma";
-export { generateMigrations } from "./kysely";
 export type { SchemaGenerator } from "./types";
 
 export const adapters = {
 	prisma: generatePrismaSchema,
 	drizzle: generateDrizzleSchema,
-	kysely: generateMigrations,
+	kysely: generateKyselySchema,
 };
 
 export const generateSchema = (opts: {

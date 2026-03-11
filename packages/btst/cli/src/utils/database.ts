@@ -13,7 +13,7 @@ interface DatabaseConnection {
 export async function createDatabaseConnection(
 	databaseUrl: string,
 ): Promise<DatabaseConnection> {
-	let connectionPool: any = null;
+	let _connectionPool: any = null;
 
 	try {
 		if (
@@ -25,7 +25,7 @@ export async function createDatabaseConnection(
 			const { Kysely, PostgresDialect } = await import("kysely");
 			const { Pool } = await import("pg");
 			const pool = new Pool({ connectionString: databaseUrl });
-			connectionPool = pool;
+			_connectionPool = pool;
 			const kysely = new Kysely({
 				dialect: new PostgresDialect({
 					pool: pool,
@@ -45,7 +45,7 @@ export async function createDatabaseConnection(
 			const { Kysely, MysqlDialect } = await import("kysely");
 			const { createPool } = await import("mysql2/promise");
 			const pool = createPool(databaseUrl);
-			connectionPool = pool;
+			_connectionPool = pool;
 			const kysely = new Kysely({
 				dialect: new MysqlDialect(pool),
 			});

@@ -43,7 +43,7 @@ export function EnterpriseForm() {
 			} else {
 				setSubmitStatus("error");
 			}
-		} catch (error) {
+		} catch (_error) {
 			setSubmitStatus("error");
 		} finally {
 			setIsSubmitting(false);

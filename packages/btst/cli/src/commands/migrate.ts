@@ -1,14 +1,14 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import { getMigrations } from "better-auth/db/migration";
 import { Command } from "commander";
-import { getMigrations } from "better-auth/db";
 import prompts from "prompts";
-import path from "path";
-import fs from "fs/promises";
+import {
+	DEFAULT_AUTH_TABLES,
+	filterAuthTables,
+} from "../utils/filter-auth-tables";
 import { logger } from "../utils/logger";
 import { loadBetterDbSchema } from "../utils/schema-loader";
-import {
-	filterAuthTables,
-	DEFAULT_AUTH_TABLES,
-} from "../utils/filter-auth-tables";
 import { createSpinner } from "../utils/spinner";
 
 interface MigrateOptions {

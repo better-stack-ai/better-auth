@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { Command } from "commander";
 import chalk from "chalk";
+import { Command } from "commander";
 import { generateCommand } from "./commands/generate";
 import { initCommand } from "./commands/init";
 import { migrateCommand } from "./commands/migrate";

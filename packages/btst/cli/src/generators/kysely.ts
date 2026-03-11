@@ -1,17 +1,17 @@
 /**
  * ⚠️ AUTO-GENERATED - DO NOT MODIFY
- * 
+ *
  * This file is automatically copied from better-auth.
  * Source: packages/cli/src/generators/kysely.ts
- * 
+ *
  * To update: run `pnpm sync-upstream`
  * Any manual changes will be overwritten.
  */
 
-import { getMigrations } from "better-auth/db";
+import { getMigrations } from "better-auth/db/migration";
 import type { SchemaGenerator } from "./types";
 
-export const generateMigrations: SchemaGenerator = async ({
+export const generateKyselySchema: SchemaGenerator = async ({
 	options,
 	file,
 }) => {

@@ -200,7 +200,5 @@ test-results/
 
 state.txt
 
-# Better DB - ignore copied READMEs in package directories
-# (README is copied during release from packages/btst/README.md)
-packages/btst/*/README.md
-!packages/btst/README.md
+.cursor/
+docs/.source/index.ts

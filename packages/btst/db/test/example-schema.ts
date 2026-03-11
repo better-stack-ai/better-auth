@@ -1,5 +1,5 @@
-import { defineDb } from "../src/index";
 import { todoPlugin } from "../../plugins/src/todo";
+import { defineDb } from "../src/index";
 
 // Test the defineDb with new object syntax
 export const blogDb = defineDb({

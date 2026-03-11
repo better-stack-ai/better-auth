@@ -2,7 +2,8 @@
 export * from "better-auth/adapters/prisma";
 
 import type { Adapter, DatabaseDefinition } from "@btst/db";
-import { prismaAdapter, type PrismaConfig } from "better-auth/adapters/prisma";
+import type { PrismaConfig } from "better-auth/adapters/prisma";
+import { prismaAdapter } from "better-auth/adapters/prisma";
 import type { BetterAuthOptions } from "better-auth/types";
 
 /**

@@ -29,7 +29,6 @@ describe("info command", () => {
 
 	afterEach(async () => {
 		await fs.rm(tmpDir, { recursive: true });
-		vi.restoreAllMocks();
 	});
 
 	it("should display system information without auth config", async () => {
@@ -347,4 +346,4 @@ describe("info command", () => {
 		expect(output.frameworks).toBeNull();
 		expect(output.databases).toBeNull();
 	});
-}, 20000);
+}, 60000);

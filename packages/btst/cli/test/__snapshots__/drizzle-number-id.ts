@@ -1,15 +1,8 @@
 import { relations } from "drizzle-orm";
-import {
-  pgTable,
-  text,
-  timestamp,
-  boolean,
-  integer,
-  index,
-} from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
 
 export const post = pgTable("post", {
-  id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
+  id: text("id").primaryKey(),
   title: text("title").notNull(),
   content: text("content").notNull(),
   published: boolean("published").default(false),
@@ -17,21 +10,21 @@ export const post = pgTable("post", {
 });
 
 export const author = pgTable("author", {
-  id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
+  id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
 });
 
 export const comment = pgTable("comment", {
-  id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
+  id: text("id").primaryKey(),
   content: text("content").notNull(),
-  postId: integer("post_id")
+  postId: text("post_id")
     .notNull()
     .references(() => post.id, { onDelete: "cascade" }),
 });
 
 export const tag = pgTable("tag", {
-  id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
+  id: text("id").primaryKey(),
   name: text("name").notNull().unique(),
 });
 

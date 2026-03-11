@@ -1,5 +1,5 @@
+import fs from "node:fs/promises";
 import { createJiti } from "jiti";
-import fs from "fs/promises";
 import { logger } from "./logger";
 
 /**
