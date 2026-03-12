@@ -38,36 +38,54 @@ All other adapters (`prisma`, `drizzle`, `memory`, `mongodb`) are thin re-export
 
 ## Steps
 
+### 0. Check for a new upstream tag
+
+**We only sync when a new stable upstream tag has been released.** Do not sync against `upstream/main` directly — only sync against a specific release tag.
+
+```bash
+git fetch upstream --tags
+
+# List the latest upstream tags (most recent first)
+git tag --list --sort=-version:refname | head -20
+```
+
+Compare against the last tag we synced. For example, if the last sync was `v1.5.0`, look for any `v1.5.x` or `v1.6.x` tag that is newer.
+
+**Important:** Skip any pre-release / beta tags (e.g. `v1.6.0-beta.1`). We only sync stable releases.
+
+If there is no newer stable tag than the one we last synced, **stop here** — there is nothing to sync this week.
+
+Record the new tag you will sync to (e.g. `TAG=v1.5.4`) — you will use it in subsequent steps.
+
 ### 1. Create a sync branch
 
 Always work on a branch, not directly on `main`:
 
 ```bash
+TAG=v1.5.4   # replace with the actual new tag
 git checkout main
 git pull origin main
-git checkout -b sync-upstream-$(date +%b-%d | tr '[:upper:]' '[:lower:]')
-# e.g. sync-upstream-mar-9
+git checkout -b sync-upstream-${TAG}
+# e.g. sync-upstream-v1.5.4
 ```
 
-### 2. Fetch upstream and preview changes
+### 2. Preview changes introduced by the new tag
 
 ```bash
-git fetch upstream
+# Commits between our HEAD and the upstream tag
+git log --oneline HEAD..${TAG} | head -30
 
-# Commits we're missing from upstream
-git log --oneline HEAD..upstream/main | head -30
-
-# Files changed in upstream since our last sync
-git diff --name-only HEAD..upstream/main | grep -v "^packages/btst/" | head -40
+# Files changed between our HEAD and the upstream tag
+git diff --name-only HEAD..${TAG} | grep -v "^packages/btst/" | head -40
 
 # Check the adapter and CLI paths specifically (these drive step 4)
-git diff --name-only HEAD..upstream/main -- packages/kysely-adapter/ packages/cli/src/generators/ packages/cli/src/utils/
+git diff --name-only HEAD..${TAG} -- packages/kysely-adapter/ packages/cli/src/generators/ packages/cli/src/utils/
 ```
 
-### 3. Merge upstream
+### 3. Merge the upstream tag
 
 ```bash
-git merge upstream/main --no-edit
+git merge ${TAG} --no-edit
 ```
 
 This will produce **many conflicts** — that is normal. The vast majority are in docs, demos, and upstream packages that we simply accept as-is.
@@ -115,7 +133,7 @@ git diff --name-only --diff-filter=U
 **f) Commit the merge:**
 
 ```bash
-git commit -m "chore: merge upstream better-auth vX.X.X"
+git commit -m "chore: merge upstream better-auth ${TAG}"
 ```
 
 ### 5. Check if `sync-upstream.ts` needs updating
@@ -159,10 +177,12 @@ Review the generated files briefly — the script adds a `⚠️ AUTO-GENERATED`
 
 All 8 packages under `packages/btst/` should be bumped together:
 
-- **Minor bump** (e.g. `2.0.x` → `2.1.0`) when upstream does a minor release (`1.4.x` → `1.5.x`)
-- **Patch bump** (e.g. `2.1.0` → `2.1.1`) for upstream patch releases only
+- **Minor bump** (e.g. `2.1.0` → `2.2.0`) for new routes, new `@btst` features, or meaningful additions — whether alongside an upstream sync or as a fork-only change
+- **Patch bump** (e.g. `2.1.0` → `2.1.1`) for a pure upstream sync with no new `@btst` additions, or for a fork-only fix/small tweak with no new functionality
 
-Edit each `packages/btst/*/package.json` and update `"version"`. Also update any `peerDependencies` referencing `"better-auth"` to reflect the new minimum version (e.g. `">=1.4.0"` → `">=1.5.0"` for a minor release).
+Note: `@btst` versioning is independent of upstream's version scheme. An upstream minor release does **not** automatically mandate a minor `@btst` bump — what matters is whether *our* packages gain new functionality.
+
+Edit each `packages/btst/*/package.json` and update `"version"`. Also update any `peerDependencies` referencing `"better-auth"` to reflect the new minimum version (e.g. `">=1.4.0"` → `">=1.5.0"`) when syncing a minor upstream release.
 
 Packages to update:
 - `packages/btst/db/package.json`
@@ -215,7 +235,7 @@ Commit the updated snapshots as part of the sync PR.
 
 ```bash
 git add -A
-git commit -m "chore: sync upstream vX.X.X + bump @btst to vY.Y.Y"
+git commit -m "chore: sync upstream ${TAG} + bump @btst to vY.Y.Y"
 git push -u origin HEAD
 # then open a PR → main
 ```
@@ -232,9 +252,7 @@ git push origin btst-vY.Y.Y
 # Then create a GitHub Release from that tag in the GitHub UI
 ```
 
-Tag conventions:
-- `btst-v2.1.0` → published as `latest`
-- `btst-v2.1.0-beta.1` → published as `beta`
+Tag convention: `btst-v2.1.0` → published as `latest`
 
 ---
 
@@ -264,7 +282,7 @@ Tag conventions:
 
 - **Check the upstream changelog before syncing** — scan `https://github.com/better-auth/better-auth/releases` for anything database or adapter related. New adapter exports, new CLI flags, or changed field types may require updates to `@btst` package wrappers beyond what the sync script handles automatically.
 
-- **Versioning note** — `@btst/*` uses its own version scheme independent of `better-auth`. The current pattern: minor `@btst` bumps align with minor `better-auth` bumps (`better-auth@1.5.x` → `@btst@2.1.x`). This is documented in `packages/btst/DEVELOPMENT.md`.
+- **Versioning note** — `@btst/*` uses its own version scheme independent of `better-auth`. Minor bumps are driven by new `@btst` functionality (new routes, features, additions), not by upstream's release cadence. Patch bumps cover pure upstream syncs and fork-only fixes with no new functionality. This is documented in `packages/btst/DEVELOPMENT.md`.
 
 - **`ci.yml` and `e2e.yml` use upstream's private runner** — after merging upstream, `ci.yml` and `e2e.yml` will reference `runs-on: starsling-ubuntu-24.04`, a self-hosted runner registered only in the upstream org. Jobs on this runner will queue forever in our fork. Always replace every `starsling-ubuntu-24.04` with `ubuntu-latest` in both files after the merge:
   ```bash
