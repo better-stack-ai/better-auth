@@ -19,6 +19,7 @@ import {
 	gt,
 	gte,
 	inArray,
+	isNotNull,
 	isNull,
 	like,
 	lt,
@@ -216,7 +217,7 @@ export const drizzleAdapter = (db: DB, config: DrizzleAdapterConfig) => {
 					}
 
 					if (w.operator === "ne") {
-						return [ne(schemaModel[field], w.value)];
+						return [w.value === null ? isNotNull(schemaModel[field]) : ne(schemaModel[field], w.value)];
 					}
 
 					if (w.operator === "gt") {
@@ -278,15 +279,15 @@ export const drizzleAdapter = (db: DB, config: DrizzleAdapterConfig) => {
 						if (w.operator === "gte") {
 							return gte(schemaModel[field], w.value);
 						}
-						if (w.operator === "ne") {
-							return ne(schemaModel[field], w.value);
-						}
-						return w.value === null
-							? isNull(schemaModel[field])
-							: eq(schemaModel[field], w.value);
-					}),
-				);
-				const orClause = or(
+					if (w.operator === "ne") {
+						return w.value === null ? isNotNull(schemaModel[field]) : ne(schemaModel[field], w.value);
+					}
+					return w.value === null
+						? isNull(schemaModel[field])
+						: eq(schemaModel[field], w.value);
+				}),
+			);
+			const orClause = or(
 					...orGroup.map((w) => {
 						const field = getFieldName({ model, field: w.field });
 						if (w.operator === "in") {
@@ -326,16 +327,16 @@ export const drizzleAdapter = (db: DB, config: DrizzleAdapterConfig) => {
 						if (w.operator === "gte") {
 							return gte(schemaModel[field], w.value);
 						}
-						if (w.operator === "ne") {
-							return ne(schemaModel[field], w.value);
-						}
-						return w.value === null
-							? isNull(schemaModel[field])
-							: eq(schemaModel[field], w.value);
-					}),
-				);
+					if (w.operator === "ne") {
+						return w.value === null ? isNotNull(schemaModel[field]) : ne(schemaModel[field], w.value);
+					}
+					return w.value === null
+						? isNull(schemaModel[field])
+						: eq(schemaModel[field], w.value);
+				}),
+			);
 
-				const clause: SQL<unknown>[] = [];
+			const clause: SQL<unknown>[] = [];
 
 				if (andGroup.length) clause.push(andClause!);
 				if (orGroup.length) clause.push(orClause!);
