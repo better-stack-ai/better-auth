@@ -187,11 +187,13 @@ export const kyselyAdapter = (
 						}
 
 						if (operator === "eq") {
-							return eb(f, "=", value);
+							return value === null ? eb(f, "is", null) : eb(f, "=", value);
 						}
 
 						if (operator === "ne") {
-							return eb(f, "<>", value);
+							return value === null
+								? eb(f, "is not", null)
+								: eb(f, "<>", value);
 						}
 
 						if (operator === "gt") {
