@@ -19,6 +19,7 @@ import {
 	gt,
 	gte,
 	inArray,
+	isNull,
 	like,
 	lt,
 	lte,
@@ -226,9 +227,9 @@ export const drizzleAdapter = (db: DB, config: DrizzleAdapterConfig) => {
 						return [gte(schemaModel[field], w.value)];
 					}
 
-					return [eq(schemaModel[field], w.value)];
-				}
-				const andGroup = where.filter(
+				return [w.value === null ? isNull(schemaModel[field]) : eq(schemaModel[field], w.value)];
+			}
+			const andGroup = where.filter(
 					(w) => w.connector === "AND" || !w.connector,
 				);
 				const orGroup = where.filter((w) => w.connector === "OR");
@@ -273,13 +274,13 @@ export const drizzleAdapter = (db: DB, config: DrizzleAdapterConfig) => {
 						if (w.operator === "gte") {
 							return gte(schemaModel[field], w.value);
 						}
-						if (w.operator === "ne") {
-							return ne(schemaModel[field], w.value);
-						}
-						return eq(schemaModel[field], w.value);
-					}),
-				);
-				const orClause = or(
+					if (w.operator === "ne") {
+						return ne(schemaModel[field], w.value);
+					}
+					return w.value === null ? isNull(schemaModel[field]) : eq(schemaModel[field], w.value);
+				}),
+			);
+			const orClause = or(
 					...orGroup.map((w) => {
 						const field = getFieldName({ model, field: w.field });
 						if (w.operator === "in") {
@@ -319,14 +320,14 @@ export const drizzleAdapter = (db: DB, config: DrizzleAdapterConfig) => {
 						if (w.operator === "gte") {
 							return gte(schemaModel[field], w.value);
 						}
-						if (w.operator === "ne") {
-							return ne(schemaModel[field], w.value);
-						}
-						return eq(schemaModel[field], w.value);
-					}),
-				);
+					if (w.operator === "ne") {
+						return ne(schemaModel[field], w.value);
+					}
+					return w.value === null ? isNull(schemaModel[field]) : eq(schemaModel[field], w.value);
+				}),
+			);
 
-				const clause: SQL<unknown>[] = [];
+			const clause: SQL<unknown>[] = [];
 
 				if (andGroup.length) clause.push(andClause!);
 				if (orGroup.length) clause.push(orClause!);

@@ -186,13 +186,13 @@ export const kyselyAdapter = (
 							return eb(f, "like", `%${value}`);
 						}
 
-						if (operator === "eq") {
-							return eb(f, "=", value);
-						}
+					if (operator === "eq") {
+						return value === null ? eb(f, "is", null) : eb(f, "=", value);
+					}
 
-						if (operator === "ne") {
-							return eb(f, "<>", value);
-						}
+					if (operator === "ne") {
+						return value === null ? eb(f, "is not", null) : eb(f, "<>", value);
+					}
 
 						if (operator === "gt") {
 							return eb(f, ">", value);
