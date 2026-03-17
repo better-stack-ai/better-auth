@@ -3314,6 +3314,30 @@ export const getNormalTestSuiteTests = (
 				expect(neIds).toContain(targetImage.id);
 				expect(neIds).toContain(otherImage.id);
 			},
+
+		"update - should return updated record when where condition uses null value":
+			async () => {
+				const withNull = await adapter.create<User>({
+					model: "user",
+					data: { ...(await generate("user")), image: null },
+					forceAllowId: true,
+				});
+
+				// Update WHERE image IS NULL AND id = withNull.id
+				const result = await adapter.update<User>({
+					model: "user",
+					where: [
+						{ field: "id", value: withNull.id },
+						{ field: "image", operator: "eq", value: null },
+					],
+					update: { name: "null-where-updated" },
+				});
+
+				// On MySQL the re-fetch after UPDATE must use IS NULL, not = NULL
+				expect(result).toBeDefined();
+				expect(result!.id).toBe(withNull.id);
+				expect(result!.name).toBe("null-where-updated");
+			},
 	};
 };
 
