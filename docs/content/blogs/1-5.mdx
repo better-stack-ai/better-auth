@@ -271,6 +271,87 @@ export const auth = betterAuth({
 
 ---
 
+### API Key Plugin
+
+The API Key plugin has received some major improvements.
+
+We've extracted the plugin into it's own package, install it via:
+
+```package-install
+npm install @better-auth/api-key
+```
+
+And update your imports!
+
+```diff title="auth.ts"
+- import { apiKey } from "better-auth/plugins";
++ import { apiKey } from "@better-auth/api-key";
+```
+
+```diff title="auth-client.ts"
+- import { apiKeyClient } from "better-auth/client/plugins";
++ import { apiKeyClient } from "@better-auth/api-key/client";
+```
+
+#### Organization owned API Keys
+
+Long awaited support for organization-owned API keys has been added.
+You can now create API keys that are owned by organizations instead of users.
+
+```ts
+import { apiKey } from "@better-auth/api-key";
+
+export const auth = betterAuth({
+    plugins: [apiKey({ references: "organization" })],
+});
+```
+
+And creating a organization-owned API key:
+
+```ts
+import { auth } from "@/lib/auth";
+
+const apiKey = await auth.api.createApiKey({
+    body: { organizationId: "org_123" },
+});
+```
+
+#### Multiple configurations for API Keys
+
+You can now support multiple api-key use-cases within your app!
+
+```ts
+export const auth = betterAuth({
+    plugins: [
+        apiKey([
+            {
+                configId: "user-keys",
+                prefix: "usr_"
+            },
+            {
+                configId: "org-keys",
+                prefix: "org_",
+                references: "organization"
+            }
+        ])
+    ]
+});
+```
+
+To create an API Key for a given configuration, call:
+
+```ts
+const key = auth.api.createApiKey({
+    body: {
+        configId: "user-keys",
+        //...
+    }
+});
+```
+
+
+---
+
 ### Unified Before & After Hooks
 
 Plugin hooks and global hooks now share the same `AuthMiddleware` type, making the hooks system consistent and composable across the entire auth pipeline.
@@ -631,7 +712,7 @@ The `/forget-password/email-otp` endpoint has been removed. Use the standard pas
 
 ### Adapter Imports
 
-The `better-auth/adapters/test` export has been removed. Use the `testUtils` plugin instead.
+The `better-auth/adapters/test` export has been removed. Use `testAdapter` and `createTestSuite` from `@better-auth/test-utils/adapter` instead. See the [Create a Database Adapter](/docs/guides/create-a-db-adapter#test-your-adapter) guide for details.
 
 ### API Key Plugin Moved to `@better-auth/api-key`
 
@@ -682,6 +763,10 @@ export const auth = betterAuth({
 + const configId = apiKey.configId;
 ```
 
+**Permission changes:**
+The `updateApiKey` endpoint now requires at least a `userId` parameter or headers to be passed on the server side.
+If you didn't provide this in previous version, you're now required to pass them.
+
 ---
 
 ## 🛠 Developer Changes
@@ -694,7 +779,6 @@ All previously deprecated APIs have been removed. This includes deprecated adapt
 
 | Removed | Replacement |
 | --- | --- |
-| `createAdapter` | `createAdapterFactory` |
 | `Adapter` | `DBAdapter` |
 | `TransactionAdapter` | `DBTransactionAdapter` |
 | `Store` (client) | `ClientStore` |

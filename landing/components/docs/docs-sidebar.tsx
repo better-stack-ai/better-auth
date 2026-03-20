@@ -30,8 +30,10 @@ export function DocsSidebar() {
 			item.list.some(
 				(listItem) =>
 					listItem.href === pathname ||
-					(listItem.hasSubpages && pathname.startsWith(`${listItem.href}/`)) ||
-					listItem.subpages?.some((sp) => pathname === sp.href),
+					(listItem.subpages &&
+						listItem.subpages.length > 0 &&
+						pathname.startsWith(`${listItem.href}/`)) ||
+					listItem.subpages?.some((sp) => sp.href && pathname === sp.href),
 			),
 		);
 		return defaultValue === -1 ? 0 : defaultValue;
@@ -69,7 +71,7 @@ export function DocsSidebar() {
 			initial={{ x: -24, opacity: 0 }}
 			animate={{ x: 0, opacity: 1 }}
 			transition={{ duration: 0.28, ease: "easeOut" }}
-			className="fixed left-0 top-[42px] bottom-0 w-[22vw] max-w-[300px] hidden lg:flex flex-col z-30 bg-background border-r border-foreground/5 transition-[width] duration-300 ease-out"
+			className="fixed left-0 top-(--landing-topbar-height) bottom-0 w-[22vw] max-w-[300px] hidden lg:flex flex-col z-30 bg-background border-r border-foreground/5 transition-[width] duration-300 ease-out"
 		>
 			{/* Branch switcher */}
 			<BranchSwitcher />
@@ -115,7 +117,7 @@ export function DocsSidebar() {
 									}}
 								>
 									<section.Icon className="size-4.5" />
-									<span className="grow">{section.title}</span>
+									<span className="grow tracking-normal">{section.title}</span>
 									<ChevronDownIcon
 										className={cn(
 											"h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
@@ -207,15 +209,15 @@ function BranchSwitcher() {
 	};
 
 	return (
-		<div ref={ref} className="relative border-b border-foreground/10">
+		<div ref={ref} className="relative border-b border-foreground/5">
 			<button
 				type="button"
-				className="flex w-full items-center gap-2 px-4 py-3 hover:bg-foreground/[0.02] transition-colors"
+				className="flex h-10 w-full items-center gap-2 px-4 text-left hover:bg-foreground/2 transition-colors"
 				onClick={() => setOpen((v) => !v)}
 			>
 				<GitBranch className="size-3.5 text-foreground/60 shrink-0" />
 				<div className="grow text-left min-w-0">
-					<p className="text-[12px] uppercase tracking-wider text-foreground/60 block">
+					<p className="block text-[12px] leading-none uppercase tracking-wider text-foreground/60">
 						{branch}{" "}
 						<span className="text-[9px] text-foreground/40 ">
 							{branch === "main" ? "" : "pre-release"}
@@ -328,11 +330,13 @@ function SidebarSection({
 				if (!item.href) return null;
 				const hasSubpages = !!(item.subpages && item.subpages.length > 0);
 				const subpageMatch =
-					hasSubpages && item.subpages?.some((sp) => pathname === sp.href);
+					hasSubpages &&
+					item.subpages?.some((sp) => sp.href && pathname === sp.href);
 				const active =
 					pathname === item.href ||
 					subpageMatch ||
-					(!!item.hasSubpages && pathname.startsWith(`${item.href}/`));
+					(!!(item.subpages && item.subpages.length > 0) &&
+						pathname.startsWith(`${item.href}/`));
 
 				return (
 					<SidebarItemWithSubpages
@@ -452,7 +456,16 @@ function SubpageLink({
 					: "text-foreground/55 hover:text-foreground/80 hover:bg-foreground/3",
 			)}
 		>
-			{icon && <span className="size-4 shrink-0">{icon}</span>}
+			{icon && (
+				<span
+					className={cn(
+						"min-w-4 [&>svg]:size-[12px] transition-colors duration-150",
+						active ? "text-foreground" : "text-foreground/55",
+					)}
+				>
+					{icon}
+				</span>
+			)}
 			<span className="truncate">{children}</span>
 		</Link>
 	);

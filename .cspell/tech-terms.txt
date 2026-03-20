@@ -48,5 +48,5 @@ SIEM
 sess
 reactivations
 whsec
-btst
-orms
+moonshotai
+kimi
