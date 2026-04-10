@@ -1,10 +1,10 @@
-// Re-export everything from Better Auth's Prisma adapter
-export * from "better-auth/adapters/prisma";
+// Prisma adapter for @btst (vendored copy)
+export * from "./prisma-adapter";
 
 import type { Adapter, DatabaseDefinition } from "@btst/db";
-import type { PrismaConfig } from "better-auth/adapters/prisma";
-import { prismaAdapter } from "better-auth/adapters/prisma";
 import type { BetterAuthOptions } from "better-auth/types";
+import type { PrismaConfig } from "./prisma-adapter";
+import { prismaAdapter } from "./prisma-adapter";
 
 /**
  * Helper function to create a Prisma adapter with Better DB schema

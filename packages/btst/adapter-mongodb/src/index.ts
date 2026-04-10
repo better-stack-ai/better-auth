@@ -1,10 +1,10 @@
-// Re-export everything from Better Auth's MongoDB adapter
-export * from "better-auth/adapters/mongodb";
+// MongoDB adapter for @btst (vendored copy)
+export * from "./mongodb-adapter";
 
 import type { Adapter, DatabaseDefinition } from "@btst/db";
-import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import type { BetterAuthOptions } from "better-auth/types";
 import type { Db } from "mongodb";
+import { mongodbAdapter } from "./mongodb-adapter";
 
 /**
  * Helper function to create a MongoDB adapter with Better DB schema
