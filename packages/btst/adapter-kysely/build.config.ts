@@ -8,6 +8,7 @@ export default defineBuildConfig({
 		/^@better-auth\/core\//,
 		"@btst/db",
 		"kysely",
+		"node:sqlite",
 	],
 	declaration: true,
 	rollup: {
