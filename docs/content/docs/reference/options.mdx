@@ -7,7 +7,9 @@ List of all the available options for configuring Better Auth. See [Better Auth 
 
 ## `appName`
 
-The name of the application.
+The name of your application. Defaults to `"Better Auth"`.
+
+It's used as a display name in contexts where your app needs to be identified — for example, when users set up two-factor authentication with an authenticator app (like Google Authenticator), `appName` appears as the issuer name in the TOTP entry. This can be overridden per-plugin (e.g. the [2FA plugin's `issuer` option](/docs/plugins/2fa#issuer)).
 
 ```ts
 import { betterAuth } from "better-auth";
@@ -48,7 +50,7 @@ Default: `/api/auth`
 
 ## `trustedOrigins`
 
-List of trusted origins. You can provide a static array of origins, a function that returns origins dynamically, or use wildcard patterns to match multiple domains.
+By default, Better Auth trusts the base URL of your app (i.e. [`baseURL`](#baseurl)). You can specify additional trusted origins via this option. Values can be a static array of origins, a function that returns origins dynamically, or wildcard patterns to match multiple domains.
 
 ### Static Origins
 
@@ -192,7 +194,7 @@ Read more about databases [here](/docs/concepts/database).
 
 ## `secondaryStorage`
 
-Secondary storage configuration used to store session and rate limit data.
+Secondary storage configuration used to store session data, verification records, and rate limit data.
 
 ```ts
 import { betterAuth } from "better-auth";
@@ -491,12 +493,13 @@ Verification configuration options.
 ```ts
 import { betterAuth } from "better-auth";
 export const auth = betterAuth({
+	secondaryStorage: {
+		// your Redis or KV implementation
+	},
 	verification: {
-		modelName: "verifications",
-		fields: {
-			userId: "user_id"
-		},
-		disableCleanup: false
+		disableCleanup: false,
+		storeIdentifier: "hashed",
+		storeInDatabase: false
 	},
 })
 ```
@@ -504,6 +507,10 @@ export const auth = betterAuth({
 - `modelName`: The model name for the verification table
 - `fields`: Map fields to different column names
 - `disableCleanup`: Disable cleaning up expired values when a verification value is fetched
+- `storeIdentifier`: How to store verification identifiers such as tokens and OTP keys. Supports `"plain"`, `"hashed"`, or a custom hasher. You can also use `{ default, overrides }` to apply different strategies per identifier prefix.
+- `storeInDatabase`: Store verification records in the database even when `secondaryStorage` is configured. Default is `false`.
+
+If `secondaryStorage` is configured, verification records are stored there by default. That behavior applies to flows that use Better Auth's shared verification layer, including OTP and magic-link style flows.
 
 ## `rateLimit`
 
@@ -594,7 +601,7 @@ export const auth = betterAuth({
 ```
 
 - `ipAddress`: IP address configuration for rate limiting and session tracking
-- `useSecureCookies`: Use secure cookies (default: `false`)
+- `useSecureCookies`: By default, cookies are secure in production environments. Set this to `true` to force the `Secure` cookie attribute in all environments.
 - `disableCSRFCheck`: Disable all CSRF protection including origin header validation and Fetch Metadata checks (⚠️ security risk)
 - `disableOriginCheck`: Disable URL validation for `callbackURL`, `redirectTo`, and other redirect URLs (⚠️ security risk)
 - `crossSubDomainCookies`: Configure cookies to be shared across subdomains

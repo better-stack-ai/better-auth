@@ -21,7 +21,10 @@ import {
 	getJwtPlugin,
 	getStoredToken,
 	isPKCERequired,
+	normalizeTimestampValue,
 	parseClientMetadata,
+	resolveSessionAuthTime,
+	resolveSubjectIdentifier,
 	storeToken,
 	validateClientCredentials,
 } from "./utils";
@@ -132,6 +135,7 @@ async function createIdToken(
 	const iat = Math.floor(Date.now() / 1000);
 	const exp = iat + (opts.idTokenExpiresIn ?? 36000);
 	const userClaims = userNormalClaims(user, scopes);
+	const resolvedSub = await resolveSubjectIdentifier(user.id, client, opts);
 	const authTimeSec =
 		authTime != null ? Math.floor(authTime.getTime() / 1000) : undefined;
 	// TODO: this should be validated against the login process
@@ -156,8 +160,9 @@ async function createIdToken(
 		...customClaims,
 		auth_time: authTimeSec,
 		acr,
+		...customClaims,
 		iss: jwtPluginOptions?.jwt?.issuer ?? ctx.context.baseURL,
-		sub: user.id,
+		sub: resolvedSub,
 		aud: client.clientId,
 		nonce,
 		iat,
@@ -564,7 +569,7 @@ async function checkVerificationValue(
 		verificationValue.query?.redirect_uri !== redirect_uri
 	) {
 		throw new APIError("BAD_REQUEST", {
-			error_description: "missing verification redirect_uri",
+			error_description: "redirect_uri mismatch",
 			error: "invalid_request",
 		});
 	}
@@ -757,8 +762,8 @@ async function handleAuthorizationCodeGrant(
 
 	const authTime =
 		verificationValue.authTime != null
-			? new Date(verificationValue.authTime)
-			: new Date(session.createdAt);
+			? normalizeTimestampValue(verificationValue.authTime)
+			: resolveSessionAuthTime(session);
 
 	return createUserTokens(
 		ctx,
@@ -1061,7 +1066,9 @@ async function handleRefreshTokenGrant(
 	}
 
 	const authTime =
-		refreshToken.authTime != null ? new Date(refreshToken.authTime) : undefined;
+		refreshToken.authTime != null
+			? normalizeTimestampValue(refreshToken.authTime)
+			: undefined;
 
 	// Generate new tokens
 	return createUserTokens(
