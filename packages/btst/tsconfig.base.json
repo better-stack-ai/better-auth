@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "customConditions": [],
+    "composite": false,
+    "emitDeclarationOnly": false,
+    "incremental": false
+  }
+}
