@@ -5,7 +5,7 @@ export const post = sqliteTable("post", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   content: text("content").notNull(),
-  published: integer("published", { mode: "boolean" }).default(false),
+  published: integer("published", { mode: "boolean" }).default(false).notNull(),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 

@@ -1,3 +1,5 @@
+btst
+mydb
 SCIMAPI
 MCPO
 tocnav
@@ -15,3 +17,6 @@ myapp
 Neue
 CCPA
 CPRA
+tmcp
+ciba
+CIBA

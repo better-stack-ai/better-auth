@@ -11,7 +11,7 @@ model Post {
   id        String    @id @map("_id")
   title     String
   content   String
-  published Boolean?  @default(false)
+  published Boolean   @default(false)
   createdAt DateTime
   comments  Comment[]
 

@@ -11,7 +11,7 @@ model Post {
   id        String    @id
   title     String    @db.Text
   content   String    @db.Text
-  published Boolean?  @default(false)
+  published Boolean   @default(false)
   createdAt DateTime
   comments  Comment[]
 

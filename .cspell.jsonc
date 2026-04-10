@@ -99,8 +99,6 @@
 		"*.config.js",
 		"*.config.ts",
 		"*.json",
-		"scripts/**",
-		"packages/btst/**",
-		"knip.jsonc"
+		".gitignore"
 	]
 }

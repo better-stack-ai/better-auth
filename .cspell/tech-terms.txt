@@ -48,5 +48,15 @@ SIEM
 sess
 reactivations
 whsec
-btst
+moonshotai
+kimi
+ilike
+nvmrc
+retarget
+retargeted
+GHEOF
+denoland
+zizmor
+zizmorcore
+isready
 orms

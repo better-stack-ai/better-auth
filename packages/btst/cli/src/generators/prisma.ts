@@ -243,7 +243,7 @@ export const generatePrismaSchema: SchemaGenerator = async ({
 							})
 						: getType({
 								isBigint: attr?.bigint || false,
-								isOptional: !attr?.required,
+								isOptional: attr?.required === false,
 								type:
 									attr.references?.field === "id"
 										? useNumberId
@@ -376,7 +376,7 @@ export const generatePrismaSchema: SchemaGenerator = async ({
 						.field(
 							referencedCustomModelName.toLowerCase(),
 							`${capitalizeFirstLetter(referencedCustomModelName)}${
-								!attr.required ? "?" : ""
+								attr.required === false ? "?" : ""
 							}`,
 						)
 						.attribute(relationField);

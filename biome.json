@@ -146,8 +146,8 @@
       "!**/.output",
       "!**/.tmp",
       "!**/tmp-docs-fetch",
-      "!**/btst/**",
-      "!scripts/**"
+      "!**/.claude/worktrees/**",
+      "!**/__snapshots__/**"
     ]
   }
 }

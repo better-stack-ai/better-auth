@@ -1,10 +1,10 @@
 // Drizzle adapter for @btst
 export * from "./drizzle-adapter";
 
-import type { Adapter, DatabaseDefinition } from "@btst/db";
-import type { DB } from "better-auth/adapters/drizzle";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import type { DatabaseDefinition, DBAdapter } from "@btst/db";
 import type { BetterAuthOptions } from "better-auth/types";
+import type { DB } from "./drizzle-adapter";
+import { drizzleAdapter } from "./drizzle-adapter";
 
 interface CreateDrizzleAdapterConfig {
 	/**
@@ -65,7 +65,7 @@ export function createDrizzleAdapter(
 	db: DatabaseDefinition,
 	config: CreateDrizzleAdapterConfig,
 	options: BetterAuthOptions = {},
-): (options: BetterAuthOptions) => Adapter {
+): (options: BetterAuthOptions) => DBAdapter {
 	return (adapterOptions: BetterAuthOptions = {}) => {
 		const mergedOptions = {
 			...options,

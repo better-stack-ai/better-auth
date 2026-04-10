@@ -5,22 +5,19 @@
  *
  * This script syncs specific files from upstream better-auth into @btst packages.
  *
- * IMPORTANT: Adapters are NOT vendored anymore!
- * After v2.0.0, all @btst adapters are thin wrappers that re-export from
- * better-auth/adapters/* instead of vendoring the code. This keeps them simple
- * and automatically in sync with better-auth updates.
+ * All @btst adapters are vendored copies of the standalone adapter packages.
+ * This ensures @btst packages always use the full-featured standalone adapters
+ * (with fixes like IS NULL / IS NOT NULL) rather than the built-in better-auth adapters.
  *
  * What this script syncs:
+ * - Drizzle adapter (packages/drizzle-adapter/src/ → packages/btst/adapter-drizzle/src/)
+ * - Prisma adapter (packages/prisma-adapter/src/ → packages/btst/adapter-prisma/src/)
+ * - Memory adapter (packages/memory-adapter/src/ → packages/btst/adapter-memory/src/)
+ * - MongoDB adapter (packages/mongo-adapter/src/ → packages/btst/adapter-mongodb/src/)
  * - Kysely adapter (packages/kysely-adapter/src/ → packages/btst/adapter-kysely/src/)
- *   Vendored because @better-auth/kysely-adapter is not bundled into better-auth.
- *   The source location changed in v1.5.4 from packages/better-auth/src/adapters/kysely-adapter/
- *   to the new standalone packages/kysely-adapter/ package.
+ *   Kysely also needs import patches to replace @better-auth/core/utils with a local utility.
  * - CLI generators (Drizzle, Kysely, Prisma schema generators)
  * - CLI utilities
- *
- * What this script does NOT sync:
- * - Drizzle, Prisma, Memory, MongoDB adapter code
- *   These are thin re-exports from better-auth/adapters/* and stay in sync automatically.
  *
  * Run: pnpm tsx scripts/sync-upstream.ts
  */
@@ -72,16 +69,44 @@ interface CopyConfig {
 const ROOT = path.resolve(__dirname, "..");
 
 const COPY_CONFIGS: CopyConfig[] = [
-	// Kysely Adapter - must be vendored since @better-auth/kysely-adapter is not
-	// bundled into the published better-auth package.
-	// In v1.5.4+ the adapter lives in its own monorepo package packages/kysely-adapter/
-	// (published as @better-auth/kysely-adapter). The old location
-	// packages/better-auth/src/adapters/kysely-adapter/ now just re-exports from there.
+	// Drizzle Adapter - vendored from the standalone @better-auth/drizzle-adapter package.
+	// Using the standalone package ensures btst gets all fixes (e.g. IS NULL / IS NOT NULL)
+	// that may not be present in the built-in better-auth/adapters/drizzle.
+	{
+		from: "packages/drizzle-adapter/src",
+		to: "packages/btst/adapter-drizzle/src",
+		files: ["drizzle-adapter.ts", "query-builders.ts"],
+	},
+
+	// Prisma Adapter - vendored from the standalone @better-auth/prisma-adapter package.
+	{
+		from: "packages/prisma-adapter/src",
+		to: "packages/btst/adapter-prisma/src",
+		files: ["prisma-adapter.ts"],
+	},
+
+	// Memory Adapter - vendored from the standalone @better-auth/memory-adapter package.
+	{
+		from: "packages/memory-adapter/src",
+		to: "packages/btst/adapter-memory/src",
+		files: ["memory-adapter.ts", "query-builders.ts"],
+	},
+
+	// MongoDB Adapter - vendored from the standalone @better-auth/mongo-adapter package.
+	{
+		from: "packages/mongo-adapter/src",
+		to: "packages/btst/adapter-mongodb/src",
+		files: ["mongodb-adapter.ts", "query-builders.ts"],
+	},
+
+	// Kysely Adapter - vendored from the standalone @better-auth/kysely-adapter package.
+	// Also needs import patches to replace @better-auth/core/utils with a local utility.
 	{
 		from: "packages/kysely-adapter/src",
 		to: "packages/btst/adapter-kysely/src",
 		files: [
 			"kysely-adapter.ts",
+			"query-builders.ts",
 			"types.ts",
 			"dialect.ts",
 			"bun-sqlite-dialect.ts",
@@ -231,14 +256,17 @@ async function syncFiles() {
 
 	console.log(`✅ Sync complete! Copied ${totalFilesCopied} files.\n`);
 	console.log("📋 Summary:");
+	console.log("  • Drizzle adapter vendored from @better-auth/drizzle-adapter");
+	console.log("  • Prisma adapter vendored from @better-auth/prisma-adapter");
+	console.log("  • Memory adapter vendored from @better-auth/memory-adapter");
+	console.log("  • MongoDB adapter vendored from @better-auth/mongo-adapter");
 	console.log(
-		"  • Kysely adapter vendored (imports fixed for better-auth/adapters)",
+		"  • Kysely adapter vendored (with @better-auth/core/utils → local utility patch)",
 	);
 	console.log(
 		"  • CLI generators synced (with @better-auth/core/utils → local utility patch)",
 	);
 	console.log("  • CLI utils synced");
-	console.log("  • Other adapters are thin wrappers (not vendored)");
 	console.log("\nNext steps:");
 	console.log("  1. Review the generated files");
 	console.log('  2. Run `pnpm build --filter "@btst/*"` to rebuild packages');

@@ -12,7 +12,7 @@ export const post = mysqlTable("post", {
   id: varchar("id", { length: 36 }).primaryKey(),
   title: text("title").notNull(),
   content: text("content").notNull(),
-  published: boolean("published").default(false),
+  published: boolean("published").default(false).notNull(),
   createdAt: timestamp("created_at", { fsp: 3 }).notNull(),
 });
 
