@@ -1,7 +1,7 @@
 // Memory adapter for @btst (vendored copy)
 export * from "./memory-adapter";
 
-import type { Adapter, DatabaseDefinition } from "@btst/db";
+import type { DatabaseDefinition, DBAdapter } from "@btst/db";
 import type { BetterAuthOptions } from "better-auth/types";
 import { memoryAdapter } from "./memory-adapter";
 
@@ -32,7 +32,7 @@ import { memoryAdapter } from "./memory-adapter";
 export function createMemoryAdapter(
 	db: DatabaseDefinition,
 	options: BetterAuthOptions = {},
-): (options: BetterAuthOptions) => Adapter {
+): (options: BetterAuthOptions) => DBAdapter {
 	const schema = db.getSchema();
 
 	// Initialize MemoryDB with correct model names (lowercase table names)

@@ -4,7 +4,7 @@
 export * from "./kysely-adapter";
 export * from "./types";
 
-import type { Adapter, DatabaseDefinition } from "@btst/db";
+import type { DatabaseDefinition, DBAdapter } from "@btst/db";
 import type { BetterAuthOptions } from "better-auth/types";
 import type { Kysely } from "kysely";
 import { kyselyAdapter } from "./kysely-adapter";
@@ -62,7 +62,7 @@ export function createKyselyAdapter(
 	db: DatabaseDefinition,
 	config?: CreateKyselyAdapterConfig,
 	options: BetterAuthOptions = {},
-): (options: BetterAuthOptions) => Adapter {
+): (options: BetterAuthOptions) => DBAdapter {
 	return (adapterOptions: BetterAuthOptions = {}) => {
 		const mergedOptions = {
 			...options,

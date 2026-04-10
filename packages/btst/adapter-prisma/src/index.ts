@@ -1,7 +1,7 @@
 // Prisma adapter for @btst (vendored copy)
 export * from "./prisma-adapter";
 
-import type { Adapter, DatabaseDefinition } from "@btst/db";
+import type { DatabaseDefinition, DBAdapter } from "@btst/db";
 import type { BetterAuthOptions } from "better-auth/types";
 import type { PrismaConfig } from "./prisma-adapter";
 import { prismaAdapter } from "./prisma-adapter";
@@ -37,7 +37,7 @@ export function createPrismaAdapter(
 	db: DatabaseDefinition,
 	config: PrismaConfig,
 	options: BetterAuthOptions = {},
-): (options: BetterAuthOptions) => Adapter {
+): (options: BetterAuthOptions) => DBAdapter {
 	return (adapterOptions: BetterAuthOptions = {}) => {
 		const mergedOptions = {
 			...options,

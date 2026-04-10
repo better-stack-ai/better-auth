@@ -1,7 +1,7 @@
 // MongoDB adapter for @btst (vendored copy)
 export * from "./mongodb-adapter";
 
-import type { Adapter, DatabaseDefinition } from "@btst/db";
+import type { DatabaseDefinition, DBAdapter } from "@btst/db";
 import type { BetterAuthOptions } from "better-auth/types";
 import type { Db } from "mongodb";
 import { mongodbAdapter } from "./mongodb-adapter";
@@ -37,7 +37,7 @@ export function createMongoDbAdapter(
 	mongoDb: Db,
 	db: DatabaseDefinition,
 	options: BetterAuthOptions = {},
-): (options: BetterAuthOptions) => Adapter {
+): (options: BetterAuthOptions) => DBAdapter {
 	return (adapterOptions: BetterAuthOptions = {}) => {
 		const mergedOptions = {
 			...options,
