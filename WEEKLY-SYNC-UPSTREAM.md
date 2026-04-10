@@ -24,15 +24,17 @@
 
 ### What `sync-upstream.ts` vendors
 
-The sync script copies three groups of files from upstream into `@btst`:
+The sync script vendors files from upstream standalone adapter packages into `@btst`. All adapters are vendored (not thin re-exports) to ensure `@btst` always gets the full-featured standalone adapter implementations with all upstream fixes:
 
 | Source (in this monorepo) | Destination | Notes |
 |---------------------------|-------------|-------|
-| `packages/kysely-adapter/src/` | `packages/btst/adapter-kysely/src/` | Vendored because `@better-auth/kysely-adapter` is a peer dep, not bundled by `better-auth` |
+| `packages/drizzle-adapter/src/` | `packages/btst/adapter-drizzle/src/` | Full drizzle adapter implementation |
+| `packages/prisma-adapter/src/` | `packages/btst/adapter-prisma/src/` | Full prisma adapter implementation |
+| `packages/memory-adapter/src/` | `packages/btst/adapter-memory/src/` | Full memory adapter implementation |
+| `packages/mongo-adapter/src/` | `packages/btst/adapter-mongodb/src/` | Full mongodb adapter implementation |
+| `packages/kysely-adapter/src/` | `packages/btst/adapter-kysely/src/` | Kysely adapter with import patches (`@better-auth/core/utils` → local utility) |
 | `packages/cli/src/generators/` | `packages/btst/cli/src/generators/` | Drizzle, Prisma, Kysely schema generators |
-| `packages/cli/src/utils/get-package-info.ts` | `packages/btst/cli/src/utils/` | Package detection utility |
-
-All other adapters (`prisma`, `drizzle`, `memory`, `mongodb`) are thin re-exports — they update automatically with the `better-auth` version bump and need no vendoring.
+| `packages/cli/src/utils/` | `packages/btst/cli/src/utils/` | Package detection utility and helpers |
 
 ---
 
@@ -146,8 +148,15 @@ pnpm tsx scripts/sync-upstream.ts 2>&1 | head -20
 
 If you see `❌ Source directory not found` or `❌ Source file not found`, the upstream structure changed. Common changes to watch for:
 
-- **Kysely adapter location** — in v1.5.4 it moved from `packages/better-auth/src/adapters/kysely-adapter/` to `packages/kysely-adapter/src/`. Update the `from` path in `COPY_CONFIGS` inside `scripts/sync-upstream.ts`.
-- **New files added** — if upstream adds new files to a vendored directory (e.g. `d1-sqlite-dialect.ts` was added in v1.5.4), add them to the `files` array in the relevant config block.
+- **New files added to any adapter** — check each vendored adapter's source directory for new `.ts` files not listed in its `files` array. For example, if `query-builders.ts` appears in `packages/drizzle-adapter/src/` and the adapter now imports it, add it to the corresponding `COPY_CONFIGS` entry. After a sync, a build error like `Cannot find module './query-builders'` is a sign a new file was missed.
+  ```bash
+  # Check each adapter for new files vs what sync-upstream.ts lists:
+  ls packages/drizzle-adapter/src/ packages/prisma-adapter/src/ \
+     packages/memory-adapter/src/ packages/mongo-adapter/src/ \
+     packages/kysely-adapter/src/ packages/cli/src/generators/ \
+     packages/cli/src/utils/
+  ```
+- **Adapter directory location changed** — if an adapter moves (e.g. kysely moved from `packages/better-auth/src/adapters/kysely-adapter/` to `packages/kysely-adapter/src/` in v1.5.4), update the `from` path in `COPY_CONFIGS`.
 - **Import path changes** — if upstream changes an internal import (e.g. `@better-auth/core/utils` → `@better-auth/core/utils/string`), update the `transformImports` regex in the relevant config block.
 
 See the `COPY_CONFIGS` array in `scripts/sync-upstream.ts` for the exact paths and transforms being applied.
@@ -205,11 +214,71 @@ pnpm build --filter "@btst/*"
 
 All builds must succeed with no errors before proceeding.
 
-### 9. Run `@btst` tests and verify
+### 9. Run all CI checks and fix failures
 
-Run the test suite locally to catch any remaining issues:
+This step mirrors exactly what `ci.yml` and `btst-ci.yml` run on the PR. Run every check locally and fix all failures before pushing. Do not skip any step — all of these ran in CI and failures blocked the last sync.
+
+#### 9a. Upstream CI checks (`ci.yml`)
 
 ```bash
+# Build everything first
+pnpm build
+
+# Biome lint (formatting + code style)
+pnpm lint
+
+# Knip — unused exports / dead code across the whole monorepo
+pnpm lint:dependencies
+
+# Per-package knip checks (turbo)
+pnpm lint:packages
+
+# Spell check (cspell)
+pnpm lint:spell
+
+# Docs markdown format check
+pnpm format:check
+
+# TypeScript type checking per-package
+pnpm lint:types
+
+# Full monorepo typecheck
+pnpm typecheck
+
+# Dist declaration typecheck
+pnpm typecheck:dist
+```
+
+**Common failures and fixes:**
+
+- **`pnpm lint` fails** — Biome formatting/lint errors in `@btst` vendored files. The sync script adds an auto-generated header that can break linting if the source file had trailing newlines or other issues. Run `pnpm lint:fix` on the failing files or manually fix the reported errors.
+
+- **`pnpm lint:packages` / `pnpm lint:dependencies` fails (knip)** — Knip reports unused exports or files. After a sync, adapters may export symbols that `knip.jsonc` didn't know about. Fix by:
+  1. Adding the entry to the `ignore` or `ignoreDependencies` array in `knip.jsonc`, **or**
+  2. Removing the unused export from the `@btst` adapter's `index.ts` if it was mistakenly added.
+  
+  Also check `packages/btst/adapter-kysely/package.json` and `packages/btst/db/package.json` — if they declare `exports` that reference non-existent files, knip will complain.
+
+- **`pnpm lint:spell` fails (cspell)** — New words introduced by upstream (library names, technical terms, author names). Add them to the correct file:
+  - `.cspell/tech-terms.txt` — technical terms, library names, acronyms
+  - `.cspell/names.txt` — author names or proper nouns
+  - `.cspell/custom-words.txt` — domain-specific words
+
+- **`pnpm lint:types` / `pnpm typecheck` fails** — Type errors in `@btst` packages after a sync. Common causes:
+  - Missing type dependency: add it to the adapter's `package.json` `devDependencies` and run `pnpm install`
+  - Wrong `tsconfig.json` reference: each `packages/btst/*/tsconfig.json` should extend `../../tsconfig.base.json`, not a path that no longer exists
+  - New upstream export types that reference packages not in `@btst` deps
+
+#### 9b. BTST CI checks (`btst-ci.yml`)
+
+```bash
+# Build @btst packages
+pnpm turbo build --filter="./packages/btst/*"
+
+# Typecheck @btst packages
+pnpm --filter "@btst/*" exec tsc --noEmit
+
+# Run @btst tests (SQLite-only tests pass locally; Postgres/MySQL tests need CI)
 pnpm turbo test --continue --filter="./packages/btst/*"
 ```
 
@@ -284,8 +353,21 @@ Tag convention: `btst-v2.1.0` → published as `latest`
 
 - **Versioning note** — `@btst/*` uses its own version scheme independent of `better-auth`. Minor bumps are driven by new `@btst` functionality (new routes, features, additions), not by upstream's release cadence. Patch bumps cover pure upstream syncs and fork-only fixes with no new functionality. This is documented in `packages/btst/DEVELOPMENT.md`.
 
-- **`ci.yml` and `e2e.yml` use upstream's private runner** — after merging upstream, `ci.yml` and `e2e.yml` will reference `runs-on: starsling-ubuntu-24.04`, a self-hosted runner registered only in the upstream org. Jobs on this runner will queue forever in our fork. Always replace every `starsling-ubuntu-24.04` with `ubuntu-latest` in both files after the merge:
+- **`@btst` tsconfig files must extend the base** — each `packages/btst/*/tsconfig.json` must have `"extends": "../../tsconfig.base.json"` (two levels up, relative to the package dir). If `pnpm --filter "@btst/*" exec tsc --noEmit` reports `Cannot find tsconfig base`, check that `packages/btst/tsconfig.base.json` exists and all package tsconfigs point to it correctly.
+
+- **All adapters are now vendored, not re-exports** — as of the v1.6.x sync, `sync-upstream.ts` vendors all five adapters (drizzle, prisma, memory, mongodb, kysely) from their standalone upstream packages. If you see a `@btst` adapter `index.ts` that re-exports from `better-auth/adapters/...` instead of from a local vendored file, update it to import from the vendored file. The upstream standalone packages receive fixes that may not make it into `better-auth`'s built-in adapters.
+
+- **New adapter source files break the build silently** — when upstream adds a new file to an adapter (e.g. `query-builders.ts` in drizzle/memory/mongodb adapters in v1.6.x), the vendored copy won't have it and the build will fail with `Cannot find module`. After each sync, check `packages/*-adapter/src/` for files not yet listed in `sync-upstream.ts COPY_CONFIGS` and add them. Then re-run the sync script.
+
+- **ALL workflow files use upstream's private runner** — after merging upstream, any workflow that has `runs-on: starsling-ubuntu-24.04` (upstream's self-hosted runner) will queue forever in our fork. Replace it in every workflow file at once:
   ```bash
   sed -i 's/runs-on: starsling-ubuntu-24\.04/runs-on: ubuntu-latest/g' \
-    .github/workflows/ci.yml .github/workflows/e2e.yml
+    .github/workflows/*.yml
+  ```
+  This covers `ci.yml`, `e2e.yml`, and any new workflows upstream added in the release (e.g. `auto-changeset.yml`, `promote.yml`, `verify-changesets.yml`, etc.).
+
+- **`preview.yml` should be deleted** — upstream's docs preview workflow (`preview.yml`) is only meaningful inside the upstream org (it previously had an `if: github.repository == 'better-auth/better-auth'` guard). After a merge where upstream removes that guard, the workflow will try to run in our fork and fail. Delete it since we don't host the docs:
+  ```bash
+  rm -f .github/workflows/preview.yml
+  git rm -f .github/workflows/preview.yml 2>/dev/null || true
   ```
