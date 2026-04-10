@@ -1,7 +1,7 @@
 import { defineBuildConfig } from "unbuild";
 
 export default defineBuildConfig({
-	entries: ["src/index"],
+	entries: ["src/index", "src/node-sqlite-dialect"],
 	externals: [
 		"better-auth",
 		"@better-auth/core",
