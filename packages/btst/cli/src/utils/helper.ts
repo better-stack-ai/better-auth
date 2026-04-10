@@ -1,9 +1,9 @@
 /**
  * ⚠️ AUTO-GENERATED - DO NOT MODIFY
- *
+ * 
  * This file is automatically copied from better-auth.
  * Source: packages/cli/src/utils/helper.ts
- *
+ * 
  * To update: run `pnpm sync-upstream`
  * Any manual changes will be overwritten.
  */
@@ -32,16 +32,6 @@ export async function tryCatch<T, E = Error>(
 	} catch (error) {
 		return { data: null, error: error as E };
 	}
-}
-
-export function enterAlternateScreen() {
-	process.stdout.write("\u001B[?1049h");
-	process.stdout.write("\u001B[2J"); // Clear screen
-	process.stdout.write("\u001B[H"); // Move cursor to home
-}
-
-export function exitAlternateScreen() {
-	process.stdout.write("\u001B[?1049l");
 }
 
 export const generateSecretHash = () => {

@@ -1,9 +1,9 @@
 /**
  * ⚠️ AUTO-GENERATED - DO NOT MODIFY
- *
+ * 
  * This file is automatically copied from better-auth.
  * Source: packages/cli/src/generators/drizzle.ts
- *
+ * 
  * To update: run `pnpm sync-upstream`
  * Any manual changes will be overwritten.
  */
@@ -276,7 +276,7 @@ export const generateDrizzleSchema: SchemaGenerator = async ({
 								}
 							}
 
-							return `${fieldName}: ${type}${attr.required ? ".notNull()" : ""}${
+							return `${fieldName}: ${type}${attr.required !== false ? ".notNull()" : ""}${
 								attr.unique ? ".unique()" : ""
 							}${
 								attr.references

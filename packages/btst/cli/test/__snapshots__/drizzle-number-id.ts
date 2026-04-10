@@ -5,7 +5,7 @@ export const post = pgTable("post", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   content: text("content").notNull(),
-  published: boolean("published").default(false),
+  published: boolean("published").default(false).notNull(),
   createdAt: timestamp("created_at").notNull(),
 });
 

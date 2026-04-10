@@ -82,6 +82,7 @@ const COPY_CONFIGS: CopyConfig[] = [
 		to: "packages/btst/adapter-kysely/src",
 		files: [
 			"kysely-adapter.ts",
+			"query-builders.ts",
 			"types.ts",
 			"dialect.ts",
 			"bun-sqlite-dialect.ts",

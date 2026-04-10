@@ -1,9 +1,9 @@
 /**
  * ⚠️ AUTO-GENERATED - DO NOT MODIFY
- *
+ * 
  * This file is automatically copied from better-auth.
  * Source: packages/kysely-adapter/src/d1-sqlite-dialect.ts
- *
+ * 
  * To update: run `pnpm sync-upstream`
  * Any manual changes will be overwritten.
  */
@@ -117,8 +117,6 @@ class D1SqliteConnection implements DatabaseConnection {
 					: BigInt(results.meta.last_row_id),
 			rows: (results?.results as O[]) || [],
 			numAffectedRows,
-			// @ts-expect-error - deprecated in kysely >= 0.23, keep for backward compatibility
-			numUpdatedOrDeletedRows: numAffectedRows,
 		};
 	}
 
