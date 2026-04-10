@@ -47,6 +47,7 @@
     "kysely": "^0.28.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260410.1",
     "better-auth": "workspace:*",
     "kysely": "^0.28.5",
     "typescript": "catalog:",
