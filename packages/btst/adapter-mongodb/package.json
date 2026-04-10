@@ -1,6 +1,6 @@
 {
   "name": "@btst/adapter-mongodb",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "MongoDB adapter for btst",
   "type": "module",
   "license": "MIT",
@@ -45,11 +45,12 @@
   "peerDependencies": {
     "better-auth": ">=1.6.0",
     "@better-auth/core": ">=1.6.0",
-    "mongodb": "^6.0.0"
+    "mongodb": "^6.0.0 || ^7.0.0"
   },
   "devDependencies": {
     "better-auth": "workspace:*",
     "@better-auth/core": "workspace:*",
+    "mongodb": "^7.1.0",
     "typescript": "catalog:",
     "unbuild": "catalog:"
   },

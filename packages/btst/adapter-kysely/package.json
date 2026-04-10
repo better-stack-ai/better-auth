@@ -1,6 +1,6 @@
 {
   "name": "@btst/adapter-kysely",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Kysely adapter for btst",
   "type": "module",
   "license": "MIT",
@@ -37,6 +37,16 @@
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
       }
+    },
+    "./node-sqlite-dialect": {
+      "import": {
+        "types": "./dist/node-sqlite-dialect.d.ts",
+        "default": "./dist/node-sqlite-dialect.mjs"
+      },
+      "require": {
+        "types": "./dist/node-sqlite-dialect.d.cts",
+        "default": "./dist/node-sqlite-dialect.cjs"
+      }
     }
   },
   "dependencies": {
@@ -44,12 +54,12 @@
   },
   "peerDependencies": {
     "better-auth": ">=1.6.0",
-    "kysely": "^0.28.0"
+    "kysely": "^0.27.0 || ^0.28.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260410.1",
     "better-auth": "workspace:*",
-    "kysely": "^0.28.5",
+    "kysely": "^0.28.14",
     "typescript": "catalog:",
     "unbuild": "catalog:"
   },
