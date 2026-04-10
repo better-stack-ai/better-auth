@@ -25,9 +25,6 @@ jobs:
           node-version: 22.x
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Update npm
-        run: npm install -g npm@latest
-      
       - run: pnpm install
 
       - name: Build packages
