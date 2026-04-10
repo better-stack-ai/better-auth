@@ -991,9 +991,6 @@ importers:
         specifier: workspace:*
         version: link:../db
     devDependencies:
-      '@better-auth/core':
-        specifier: workspace:*
-        version: link:../../core
       better-auth:
         specifier: workspace:*
         version: link:../../better-auth
@@ -1158,9 +1155,6 @@ importers:
       better-auth:
         specifier: workspace:*
         version: link:../../better-auth
-      zod:
-        specifier: ^4.1.5
-        version: 4.3.6
     devDependencies:
       typescript:
         specifier: 'catalog:'

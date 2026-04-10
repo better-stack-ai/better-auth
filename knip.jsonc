@@ -9,14 +9,26 @@
 		// test utilities only imported by test files — invisible to --production
 		"packages/better-auth/src/client/test-plugin.ts",
 		// CI scripts used by GitHub Actions workflows, not by packages
-		".github/scripts/**"
+		".github/scripts/**",
+		// dev script run directly, not imported by any package
+		"scripts/sync-upstream.ts",
+		// test snapshot fixtures — imported by test files, invisible to --production
+		"packages/btst/cli/test/__snapshots__/**",
+		"packages/btst/db/test/example-schema.ts",
+		// .js test file not matched by vitest ts entry pattern
+		"packages/btst/adapter-memory/test/create-adapter.test.js"
 	],
 	"ignoreBinaries": ["playwright", "changeset", "open", "remark", "tsx"],
-	// exports used only by tests — invisible to --production mode
+	// exports used only by tests or external consumers — invisible to --production mode
 	"ignoreIssues": {
 		"packages/cli/src/commands/init/index.ts": ["exports"],
 		"packages/cli/src/commands/init/utility/imports.ts": ["exports"],
-		"packages/sso/src/saml/assertions.ts": ["exports"]
+		"packages/sso/src/saml/assertions.ts": ["exports"],
+		// btst/cli: public programmatic API not consumed internally
+		"packages/btst/cli/src/generators/index.ts": ["exports", "duplicates"],
+		"packages/btst/cli/src/utils/filter-auth-tables.ts": ["exports"],
+		"packages/btst/cli/src/utils/get-package-info.ts": ["exports"],
+		"packages/btst/cli/src/utils/helper.ts": ["exports"]
 	},
 	"ignoreDependencies": ["@changesets/cli", "@vitest/coverage-istanbul"],
 	"rules": {
@@ -49,6 +61,21 @@
 		"packages/expo": {
 			// neverBundle externals: referenced in bundled output, not in source
 			"ignoreDependencies": ["@better-fetch/fetch", "better-call"]
+		},
+		"packages/btst/cli": {
+			"ignoreDependencies": [
+				// referenced in generated code templates, not imported by the CLI itself
+				"@btst/db"
+			]
+		},
+		// dialect files are public API — users import them directly, not via index
+		"packages/btst/adapter-kysely": {
+			"entry": ["src/dialect.ts!", "src/*-dialect.ts!"],
+			"project": ["src/**/*.ts!"],
+			"ignoreDependencies": [
+				// type-only dep used in d1-sqlite-dialect.ts, not listed in package.json
+				"@cloudflare/workers-types"
+			]
 		}
 	},
 	"vitest": {

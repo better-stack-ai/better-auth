@@ -58,3 +58,4 @@ GHEOF
 denoland
 zizmor
 zizmorcore
+isready

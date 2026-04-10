@@ -2,6 +2,7 @@ name: BTST CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'packages/btst/**'
       - 'scripts/sync-upstream.ts'
@@ -82,6 +83,9 @@ jobs:
           TURBO_TEAM: ${{ vars.TURBO_TEAM || github.repository_owner }}
           TURBO_CACHE: remote:rw
         run: pnpm turbo build --filter="./packages/btst/*"
+
+      - name: Typecheck BTST packages
+        run: pnpm --filter "@btst/*" exec tsc --noEmit
 
       - name: Test BTST packages
         env:

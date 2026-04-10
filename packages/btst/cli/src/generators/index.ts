@@ -1,4 +1,4 @@
-import type { Adapter, BetterAuthOptions } from "better-auth";
+import type { BetterAuthOptions, DBAdapter } from "better-auth";
 import { logger } from "better-auth";
 import { generateDrizzleSchema } from "./drizzle";
 import { generateKyselySchema } from "./kysely";
@@ -21,7 +21,7 @@ export const adapters = {
 };
 
 export const generateSchema = (opts: {
-	adapter: Adapter;
+	adapter: DBAdapter;
 	file?: string;
 	options: BetterAuthOptions;
 }) => {
@@ -50,9 +50,3 @@ export const generateSchema = (opts: {
 	);
 	process.exit(1);
 };
-
-/**
- * @deprecated getGenerator is a misnomer as this function gets a generator AND uses it to generate
- * and return the schema. Use generateSchema instead
- */
-export const getGenerator = generateSchema;
