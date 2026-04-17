@@ -1,6 +1,6 @@
 {
   "name": "@btst/db",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "Core database utilities and schema definition for btst",
   "type": "module",
   "license": "MIT",
