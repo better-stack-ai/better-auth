@@ -1,9 +1,9 @@
 /**
  * ⚠️ AUTO-GENERATED - DO NOT MODIFY
- * 
+ *
  * This file is automatically copied from better-auth.
  * Source: packages/mongo-adapter/src/query-builders.ts
- * 
+ *
  * To update: run `pnpm sync-upstream`
  * Any manual changes will be overwritten.
  */
