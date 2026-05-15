@@ -1,17 +1,18 @@
 /**
  * ⚠️ AUTO-GENERATED WITH PATCHES - DO NOT MODIFY
- *
+ * 
  * This file is automatically copied from better-auth with patches applied.
  * Source: packages/kysely-adapter/src/kysely-adapter.ts
- *
+ * 
  * Patches applied:
  * - @better-auth/core/utils imports replaced with local ../utils/string
  *   (avoids dependency issues with published @better-auth/core package)
- *
+ * 
  * To update: run `pnpm sync-upstream`
  * Any manual changes will be overwritten.
  */
 
+import type { BetterAuthOptions } from "better-auth/types";
 import type {
 	AdapterFactoryCustomizeAdapterCreator,
 	AdapterFactoryOptions,
@@ -21,7 +22,7 @@ import type {
 	Where,
 } from "better-auth/adapters";
 import { createAdapterFactory } from "better-auth/adapters";
-import type { BetterAuthOptions } from "better-auth/types";
+import { capitalizeFirstLetter } from "./utils/string";
 import type {
 	InsertQueryBuilder,
 	Kysely,
@@ -37,7 +38,6 @@ import {
 	insensitiveNotIn,
 } from "./query-builders";
 import type { KyselyDatabaseType } from "./types";
-import { capitalizeFirstLetter } from "./utils/string";
 
 interface KyselyAdapterConfig {
 	/**
@@ -73,6 +73,7 @@ export const kyselyAdapter = (
 	let lazyOptions: BetterAuthOptions | null = null;
 	const createCustomAdapter = (
 		db: Kysely<any>,
+		inTransaction = false,
 	): AdapterFactoryCustomizeAdapterCreator => {
 		return ({
 			getFieldName,
@@ -676,6 +677,81 @@ export const kyselyAdapter = (
 						? Number.MAX_SAFE_INTEGER
 						: Number(res);
 				},
+				async consumeOne({ model, where }) {
+					const { and, or } = convertWhereClause(model, where);
+					const applyWhere = (query: any) => {
+						if (and) {
+							query = query.where((eb: any) =>
+								eb.and(and.map((expr) => expr(eb))),
+							);
+						}
+						if (or) {
+							query = query.where((eb: any) =>
+								eb.or(or.map((expr) => expr(eb))),
+							);
+						}
+						return query;
+					};
+					const idField = getFieldName({ model, field: "id" });
+					const deleteSelectedRow = async (db: any, row: any) => {
+						const targetId = row[idField] ?? row.id;
+						if (targetId === undefined || targetId === null) {
+							return null;
+						}
+						const query: any = db
+							.deleteFrom(model)
+							.where(`${model}.${idField}`, "=", targetId);
+
+						if (config?.type === "mysql") {
+							const result = await query.executeTakeFirst();
+							return Number(result.numDeletedRows) > 0 ? row : null;
+						}
+
+						if (config?.type === "mssql") {
+							return (
+								(await query.outputAll("deleted").executeTakeFirst()) ?? null
+							);
+						}
+
+						return (await query.returningAll().executeTakeFirst()) ?? null;
+					};
+					const deleteWithReturning = async (query: any) => {
+						if (config?.type === "mssql") {
+							return (
+								(await query.outputAll("deleted").executeTakeFirst()) ?? null
+							);
+						}
+						return (await query.returningAll().executeTakeFirst()) ?? null;
+					};
+
+					if (config?.type === "mysql") {
+						// MySQL does not support `DELETE ... RETURNING`. Hold the row
+						// under `SELECT ... FOR UPDATE`, then delete inside the same
+						// transaction. Concurrent claimants block until the lock
+						// releases, at which point the row is gone and they observe
+						// nothing.
+						const claimFromTransaction = async (trx: any) => {
+							const row = await applyWhere(
+								trx.selectFrom(model).selectAll().forUpdate(),
+							)
+								.limit(1)
+								.executeTakeFirst();
+							if (!row) return null;
+							return deleteSelectedRow(trx, row);
+						};
+						return inTransaction
+							? claimFromTransaction(db)
+							: db.transaction().execute(claimFromTransaction);
+					}
+
+					const targetIds = applyWhere(
+						db.selectFrom(model).select(`${model}.${idField}`),
+					).limit(1);
+					const query = db
+						.deleteFrom(model)
+						.where(`${model}.${idField}`, "in", targetIds);
+					return deleteWithReturning(query);
+				},
 				options: config,
 			};
 		};
@@ -708,8 +784,11 @@ export const kyselyAdapter = (
 				? (cb) =>
 						db.transaction().execute((trx) => {
 							const adapter = createAdapterFactory({
-								config: adapterOptions!.config,
-								adapter: createCustomAdapter(trx),
+								config: {
+									...adapterOptions!.config,
+									transaction: false,
+								},
+								adapter: createCustomAdapter(trx, true),
 							})(lazyOptions!);
 							return cb(adapter);
 						})

@@ -1,13 +1,13 @@
 /**
  * ⚠️ AUTO-GENERATED WITH PATCHES - DO NOT MODIFY
- *
+ * 
  * This file is automatically copied from better-auth with patches applied.
  * Source: packages/kysely-adapter/src/dialect.ts
- *
+ * 
  * Patches applied:
  * - @better-auth/core/utils imports replaced with local ../utils/string
  *   (avoids dependency issues with published @better-auth/core package)
- *
+ * 
  * To update: run `pnpm sync-upstream`
  * Any manual changes will be overwritten.
  */

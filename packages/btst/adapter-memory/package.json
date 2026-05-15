@@ -1,6 +1,6 @@
 {
   "name": "@btst/adapter-memory",
-  "version": "2.2.1",
+  "version": "2.3.0",
   "description": "In-memory adapter for btst",
   "type": "module",
   "license": "MIT",
