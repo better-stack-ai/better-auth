@@ -1026,9 +1026,6 @@ importers:
         specifier: workspace:*
         version: link:../db
     devDependencies:
-      '@better-auth/core':
-        specifier: workspace:*
-        version: link:../../core
       better-auth:
         specifier: workspace:*
         version: link:../../better-auth
@@ -1070,9 +1067,6 @@ importers:
         specifier: workspace:*
         version: link:../db
     devDependencies:
-      '@better-auth/core':
-        specifier: workspace:*
-        version: link:../../core
       better-auth:
         specifier: workspace:*
         version: link:../../better-auth
@@ -1092,9 +1086,6 @@ importers:
         specifier: workspace:*
         version: link:../db
     devDependencies:
-      '@better-auth/core':
-        specifier: workspace:*
-        version: link:../../core
       better-auth:
         specifier: workspace:*
         version: link:../../better-auth
@@ -1120,9 +1111,6 @@ importers:
         specifier: ^5.0.0 || ^6.0.0 || ^7.0.0
         version: 7.4.1(@types/react@19.2.14)(better-sqlite3@12.6.2)(magicast@0.5.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
     devDependencies:
-      '@better-auth/core':
-        specifier: workspace:*
-        version: link:../../core
       better-auth:
         specifier: workspace:*
         version: link:../../better-auth

@@ -44,12 +44,10 @@
   },
   "peerDependencies": {
     "better-auth": ">=1.6.0",
-    "@better-auth/core": ">=1.6.0",
     "drizzle-orm": ">=0.41.0"
   },
   "devDependencies": {
     "better-auth": "workspace:*",
-    "@better-auth/core": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "typescript": "catalog:",
     "unbuild": "catalog:"

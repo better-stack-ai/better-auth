@@ -32,10 +32,10 @@ const __dirname = dirname(__filename);
 
 const HEADER_COMMENT = `/**
  * ⚠️ AUTO-GENERATED - DO NOT MODIFY
- * 
+ *
  * This file is automatically copied from better-auth.
  * Source: {SOURCE_PATH}
- * 
+ *
  * To update: run \`pnpm sync-upstream\`
  * Any manual changes will be overwritten.
  */
@@ -44,14 +44,18 @@ const HEADER_COMMENT = `/**
 
 const HEADER_COMMENT_WITH_PATCHES = `/**
  * ⚠️ AUTO-GENERATED WITH PATCHES - DO NOT MODIFY
- * 
+ *
  * This file is automatically copied from better-auth with patches applied.
  * Source: {SOURCE_PATH}
- * 
+ *
  * Patches applied:
- * - @better-auth/core/utils imports replaced with local ../utils/string
- *   (avoids dependency issues with published @better-auth/core package)
- * 
+ * - @better-auth/core subpath imports remapped to better-auth equivalents:
+ *   @better-auth/core             → better-auth/types
+ *   @better-auth/core/db/adapter  → better-auth/adapters
+ *   @better-auth/core/env         → better-auth  (logger)
+ *   @better-auth/core/error       → better-auth  (BetterAuthError)
+ *   @better-auth/core/utils/string → local ../utils/string (capitalizeFirstLetter)
+ *
  * To update: run \`pnpm sync-upstream\`
  * Any manual changes will be overwritten.
  */
@@ -68,6 +72,69 @@ interface CopyConfig {
 
 const ROOT = path.resolve(__dirname, "..");
 
+/**
+ * Shared transform for all vendored adapter files.
+ * Remaps @better-auth/core subpath imports to their published better-auth equivalents.
+ * This avoids taking a hard dependency on the private @better-auth/core package.
+ *
+ * Notes:
+ *  - `Awaitable` is not exported by `better-auth` — it is defined as a local type alias.
+ *  - Multiple imports from different `@better-auth/core` subpaths that collapse to the
+ *    same `better-auth` target are left as separate import statements; Biome organizeImports
+ *    will merge them on the next `biome check --write` pass.
+ */
+function adapterCoreTransform(content: string): string {
+	let result = content;
+
+	// @better-auth/core/env  →  better-auth  (exports: logger, shouldPublishLog)
+	result = result.replace(
+		/from ["']@better-auth\/core\/env["']/g,
+		'from "better-auth"',
+	);
+	// @better-auth/core/error  →  better-auth  (exports: BetterAuthError)
+	result = result.replace(
+		/from ["']@better-auth\/core\/error["']/g,
+		'from "better-auth"',
+	);
+	// @better-auth/core/db/adapter  →  better-auth/adapters
+	result = result.replace(
+		/from ["']@better-auth\/core\/db\/adapter["']/g,
+		'from "better-auth/adapters"',
+	);
+
+	// @better-auth/core (bare) — handle `Awaitable` specially because it is NOT exported by
+	// `better-auth/types`.  Strip it from the import and add a local type alias instead.
+	result = result.replace(
+		/import\s+type\s*\{([^}]+)\}\s+from\s+["']@better-auth\/core["'];?/g,
+		(_, namedImports: string) => {
+			const names = namedImports
+				.split(",")
+				.map((s) => s.trim())
+				.filter(Boolean);
+			const hasAwaitable = names.includes("Awaitable");
+			const rest = names.filter((n) => n !== "Awaitable");
+			const lines: string[] = [];
+			if (rest.length > 0) {
+				lines.push(
+					`import type { ${rest.join(", ")} } from "better-auth/types";`,
+				);
+			}
+			if (hasAwaitable) {
+				// Awaitable<T> = T | Promise<T> — mirrors @better-auth/core definition.
+				lines.push("type Awaitable<T> = T | Promise<T>;");
+			}
+			return lines.join("\n");
+		},
+	);
+	// Any remaining non-type imports from the bare @better-auth/core  →  better-auth/types
+	result = result.replace(
+		/from ["']@better-auth\/core["']/g,
+		'from "better-auth/types"',
+	);
+
+	return result;
+}
+
 const COPY_CONFIGS: CopyConfig[] = [
 	// Drizzle Adapter - vendored from the standalone @better-auth/drizzle-adapter package.
 	// Using the standalone package ensures btst gets all fixes (e.g. IS NULL / IS NOT NULL)
@@ -76,6 +143,7 @@ const COPY_CONFIGS: CopyConfig[] = [
 		from: "packages/drizzle-adapter/src",
 		to: "packages/btst/adapter-drizzle/src",
 		files: ["drizzle-adapter.ts", "query-builders.ts"],
+		transformImports: adapterCoreTransform,
 	},
 
 	// Prisma Adapter - vendored from the standalone @better-auth/prisma-adapter package.
@@ -83,6 +151,7 @@ const COPY_CONFIGS: CopyConfig[] = [
 		from: "packages/prisma-adapter/src",
 		to: "packages/btst/adapter-prisma/src",
 		files: ["prisma-adapter.ts"],
+		transformImports: adapterCoreTransform,
 	},
 
 	// Memory Adapter - vendored from the standalone @better-auth/memory-adapter package.
@@ -90,6 +159,7 @@ const COPY_CONFIGS: CopyConfig[] = [
 		from: "packages/memory-adapter/src",
 		to: "packages/btst/adapter-memory/src",
 		files: ["memory-adapter.ts", "query-builders.ts"],
+		transformImports: adapterCoreTransform,
 	},
 
 	// MongoDB Adapter - vendored from the standalone @better-auth/mongo-adapter package.
@@ -97,6 +167,7 @@ const COPY_CONFIGS: CopyConfig[] = [
 		from: "packages/mongo-adapter/src",
 		to: "packages/btst/adapter-mongodb/src",
 		files: ["mongodb-adapter.ts", "query-builders.ts"],
+		transformImports: adapterCoreTransform,
 	},
 
 	// Kysely Adapter - vendored from the standalone @better-auth/kysely-adapter package.
@@ -114,18 +185,13 @@ const COPY_CONFIGS: CopyConfig[] = [
 			"node-sqlite-dialect.ts",
 		],
 		transformImports: (content: string) => {
-			// Map @better-auth/core subpath imports to their published equivalents.
-			// Note: @better-auth/core/utils/string (v1.5.4+) replaces the old /utils path.
-			return content
-				.replace(/from ["']@better-auth\/core["']/g, 'from "better-auth/types"')
-				.replace(
-					/from ["']@better-auth\/core\/db\/adapter["']/g,
-					'from "better-auth/adapters"',
-				)
-				.replace(
-					/import\s*\{\s*capitalizeFirstLetter\s*\}\s*from\s*["']@better-auth\/core\/utils(?:\/string)?["'];?/g,
-					'import { capitalizeFirstLetter } from "./utils/string";',
-				);
+			// Apply common adapter patches first, then the kysely-specific capitalizeFirstLetter patch.
+			const base = adapterCoreTransform(content);
+			// Map @better-auth/core/utils/string → local ./utils/string
+			return base.replace(
+				/import\s*\{\s*capitalizeFirstLetter\s*\}\s*from\s*["']@better-auth\/core\/utils(?:\/string)?["'];?/g,
+				'import { capitalizeFirstLetter } from "./utils/string";',
+			);
 		},
 	},
 

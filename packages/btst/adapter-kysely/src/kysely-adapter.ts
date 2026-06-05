@@ -1,18 +1,22 @@
 /**
  * ⚠️ AUTO-GENERATED WITH PATCHES - DO NOT MODIFY
- * 
+ *
  * This file is automatically copied from better-auth with patches applied.
  * Source: packages/kysely-adapter/src/kysely-adapter.ts
- * 
+ *
  * Patches applied:
- * - @better-auth/core/utils imports replaced with local ../utils/string
- *   (avoids dependency issues with published @better-auth/core package)
- * 
+ * - @better-auth/core subpath imports remapped to better-auth equivalents:
+ *   @better-auth/core             → better-auth/types
+ *   @better-auth/core/db/adapter  → better-auth/adapters
+ *   @better-auth/core/env         → better-auth  (logger)
+ *   @better-auth/core/error       → better-auth  (BetterAuthError)
+ *   @better-auth/core/utils/string → local ../utils/string (capitalizeFirstLetter)
+ *
  * To update: run `pnpm sync-upstream`
  * Any manual changes will be overwritten.
  */
 
-import type { BetterAuthOptions } from "better-auth/types";
+import { logger } from "better-auth";
 import type {
 	AdapterFactoryCustomizeAdapterCreator,
 	AdapterFactoryOptions,
@@ -22,8 +26,7 @@ import type {
 	Where,
 } from "better-auth/adapters";
 import { createAdapterFactory } from "better-auth/adapters";
-import { logger } from "@better-auth/core/env";
-import { capitalizeFirstLetter } from "./utils/string";
+import type { BetterAuthOptions } from "better-auth/types";
 import type {
 	InsertQueryBuilder,
 	Kysely,
@@ -39,6 +42,7 @@ import {
 	insensitiveNotIn,
 } from "./query-builders";
 import type { KyselyDatabaseType } from "./types";
+import { capitalizeFirstLetter } from "./utils/string";
 
 interface KyselyAdapterConfig {
 	/**

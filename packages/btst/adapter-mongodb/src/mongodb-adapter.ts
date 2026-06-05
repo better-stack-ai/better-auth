@@ -1,22 +1,30 @@
 /**
- * ⚠️ AUTO-GENERATED - DO NOT MODIFY
- * 
- * This file is automatically copied from better-auth.
+ * ⚠️ AUTO-GENERATED WITH PATCHES - DO NOT MODIFY
+ *
+ * This file is automatically copied from better-auth with patches applied.
  * Source: packages/mongo-adapter/src/mongodb-adapter.ts
- * 
+ *
+ * Patches applied:
+ * - @better-auth/core subpath imports remapped to better-auth equivalents:
+ *   @better-auth/core             → better-auth/types
+ *   @better-auth/core/db/adapter  → better-auth/adapters
+ *   @better-auth/core/env         → better-auth  (logger)
+ *   @better-auth/core/error       → better-auth  (BetterAuthError)
+ *   @better-auth/core/utils/string → local ../utils/string (capitalizeFirstLetter)
+ *
  * To update: run `pnpm sync-upstream`
  * Any manual changes will be overwritten.
  */
 
-import type { BetterAuthOptions } from "@better-auth/core";
 import type {
 	AdapterFactoryCustomizeAdapterCreator,
 	AdapterFactoryOptions,
 	DBAdapter,
 	DBAdapterDebugLogOption,
 	Where,
-} from "@better-auth/core/db/adapter";
-import { createAdapterFactory } from "@better-auth/core/db/adapter";
+} from "better-auth/adapters";
+import { createAdapterFactory } from "better-auth/adapters";
+import type { BetterAuthOptions } from "better-auth/types";
 import type { ClientSession, Db, MongoClient } from "mongodb";
 import { ObjectId, UUID } from "mongodb";
 import {
