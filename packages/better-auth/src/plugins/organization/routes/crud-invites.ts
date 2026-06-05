@@ -1,3 +1,4 @@
+import type { GenerateIdFn, LiteralString } from "@better-auth/core";
 import { createAuthEndpoint } from "@better-auth/core/api";
 import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
 import * as z from "zod";
@@ -68,6 +69,64 @@ const baseInvitationSchema = z.object({
 	]),
 });
 
+type DynamicOrganizationRole<O extends OrganizationOptions> = O extends {
+	dynamicAccessControl: { enabled: true };
+}
+	? LiteralString
+	: never;
+
+type OrganizationInvitationRole<O extends OrganizationOptions> =
+	| InferOrganizationRolesFromOption<O>
+	| DynamicOrganizationRole<O>;
+
+type ConfiguredGenerateIdOption =
+	| GenerateIdFn
+	| false
+	| "serial"
+	| "uuid"
+	| undefined;
+
+const getAdvancedGenerateId = (
+	advancedOptions: unknown,
+): GenerateIdFn | undefined => {
+	if (typeof advancedOptions !== "object" || advancedOptions === null) {
+		return undefined;
+	}
+	const generateId = (advancedOptions as { generateId?: unknown }).generateId;
+	if (typeof generateId !== "function") {
+		return undefined;
+	}
+	return generateId as GenerateIdFn;
+};
+
+const hasBuiltInOpaqueInvitationIdGeneration = ({
+	advancedGenerateId,
+	databaseGenerateId,
+}: {
+	advancedGenerateId: GenerateIdFn | undefined;
+	databaseGenerateId: ConfiguredGenerateIdOption;
+}) =>
+	advancedGenerateId === undefined &&
+	(databaseGenerateId === undefined || databaseGenerateId === "uuid");
+
+const shouldRequireVerifiedEmailForInvitationIdAction = ({
+	organizationOptions,
+	advancedGenerateId,
+	databaseGenerateId,
+}: {
+	organizationOptions: OrganizationOptions;
+	advancedGenerateId: GenerateIdFn | undefined;
+	databaseGenerateId: ConfiguredGenerateIdOption;
+}) => {
+	if (organizationOptions.requireEmailVerificationOnInvitation !== undefined) {
+		return organizationOptions.requireEmailVerificationOnInvitation;
+	}
+	return !hasBuiltInOpaqueInvitationIdGeneration({
+		advancedGenerateId,
+		databaseGenerateId,
+	});
+};
+
 export const createInvitation = <O extends OrganizationOptions>(option: O) => {
 	const additionalFieldsSchema = toZodSchema({
 		fields: option?.schema?.invitation?.additionalFields || {},
@@ -96,8 +155,8 @@ export const createInvitation = <O extends OrganizationOptions>(option: O) => {
 						 * The role to assign to the user
 						 */
 						role:
-							| InferOrganizationRolesFromOption<O>
-							| InferOrganizationRolesFromOption<O>[];
+							| OrganizationInvitationRole<O>
+							| OrganizationInvitationRole<O>[];
 						/**
 						 * The organization ID to invite
 						 * the user to
@@ -289,7 +348,11 @@ export const createInvitation = <O extends OrganizationOptions>(option: O) => {
 				email: email,
 				organizationId: organizationId,
 			});
-			if (alreadyInvited.length && !ctx.body.resend) {
+			if (
+				alreadyInvited.length &&
+				!ctx.body.resend &&
+				!ctx.context.orgOptions.cancelPendingInvitationsOnReInvite
+			) {
 				throw APIError.from(
 					"BAD_REQUEST",
 					ORGANIZATION_ERROR_CODES.USER_IS_ALREADY_INVITED_TO_THIS_ORGANIZATION,
@@ -386,6 +449,23 @@ export const createInvitation = <O extends OrganizationOptions>(option: O) => {
 					"FORBIDDEN",
 					ORGANIZATION_ERROR_CODES.INVITATION_LIMIT_REACHED,
 				);
+			}
+
+			if (
+				ctx.context.orgOptions.teams?.enabled &&
+				"teamId" in ctx.body &&
+				ctx.body.teamId
+			) {
+				const requestedTeamIds =
+					typeof ctx.body.teamId === "string"
+						? [ctx.body.teamId]
+						: (ctx.body.teamId as string[]);
+				if (requestedTeamIds.some((id) => id.includes(","))) {
+					throw APIError.from(
+						"BAD_REQUEST",
+						ORGANIZATION_ERROR_CODES.INVALID_TEAM_ID,
+					);
+				}
 			}
 
 			if (
@@ -573,6 +653,9 @@ export const acceptInvitation = <O extends OrganizationOptions>(options: O) =>
 				);
 			}
 
+			// TODO(#9124): `session.user.email` becomes nullable in v2 — this
+			// comparison and its mirrors in rejectInvitation, getInvitation, and
+			// listUserInvitations need null handling.
 			if (invitation.email.toLowerCase() !== session.user.email.toLowerCase()) {
 				throw APIError.from(
 					"FORBIDDEN",
@@ -581,7 +664,14 @@ export const acceptInvitation = <O extends OrganizationOptions>(options: O) =>
 			}
 
 			if (
-				ctx.context.orgOptions.requireEmailVerificationOnInvitation &&
+				shouldRequireVerifiedEmailForInvitationIdAction({
+					organizationOptions: ctx.context.orgOptions,
+					advancedGenerateId: getAdvancedGenerateId(
+						ctx.context.options.advanced,
+					),
+					databaseGenerateId:
+						ctx.context.options.advanced?.database?.generateId,
+				}) &&
 				!session.user.emailVerified
 			) {
 				throw APIError.from(
@@ -779,7 +869,14 @@ export const rejectInvitation = <O extends OrganizationOptions>(options: O) =>
 			}
 
 			if (
-				ctx.context.orgOptions.requireEmailVerificationOnInvitation &&
+				shouldRequireVerifiedEmailForInvitationIdAction({
+					organizationOptions: ctx.context.orgOptions,
+					advancedGenerateId: getAdvancedGenerateId(
+						ctx.context.options.advanced,
+					),
+					databaseGenerateId:
+						ctx.context.options.advanced?.database?.generateId,
+				}) &&
 				!session.user.emailVerified
 			) {
 				throw APIError.from(
@@ -1042,6 +1139,22 @@ export const getInvitation = <O extends OrganizationOptions>(options: O) =>
 					ORGANIZATION_ERROR_CODES.YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION,
 				);
 			}
+			if (
+				shouldRequireVerifiedEmailForInvitationIdAction({
+					organizationOptions: ctx.context.orgOptions,
+					advancedGenerateId: getAdvancedGenerateId(
+						ctx.context.options.advanced,
+					),
+					databaseGenerateId:
+						ctx.context.options.advanced?.database?.generateId,
+				}) &&
+				!session.user.emailVerified
+			) {
+				throw APIError.from(
+					"FORBIDDEN",
+					ORGANIZATION_ERROR_CODES.EMAIL_VERIFICATION_REQUIRED_FOR_INVITATION,
+				);
+			}
 			const organization = await adapter.findOrganizationById(
 				invitation.organizationId,
 			);
@@ -1220,6 +1333,16 @@ export const listUserInvitations = <O extends OrganizationOptions>(
 				throw APIError.fromStatus("BAD_REQUEST", {
 					message: "User email cannot be passed for client side API calls.",
 				});
+			}
+
+			// When the caller has a session, require an ownership signal stronger
+			// than the email string before enumerating invitations targeted at it.
+			// Server-side SDK calls without a session are trusted and skip the gate.
+			if (session && !session.user.emailVerified) {
+				throw APIError.from(
+					"FORBIDDEN",
+					ORGANIZATION_ERROR_CODES.EMAIL_VERIFICATION_REQUIRED_FOR_INVITATION,
+				);
 			}
 
 			const userEmail = session?.user.email || ctx.query?.email;

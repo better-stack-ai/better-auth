@@ -60,3 +60,11 @@ zizmor
 zizmorcore
 isready
 orms
+IMDS
+WHATWG
+CIMD
+Oligo
+febf
+fdff
+fffe
+vbscript
