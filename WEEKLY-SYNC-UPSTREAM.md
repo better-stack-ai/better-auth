@@ -6,8 +6,10 @@
 
 ## Context
 
-- **Our fork:** `git@github.com:olliethedev/better-auth.git` (`origin`)
+- **Product repo (PRs go here):** `https://github.com/better-stack-ai/better-auth` — this is where all sync PRs are opened and merged (same-repo PRs: the branch is pushed to this repo, not to a personal fork). If there is no remote for it yet, add one: `git remote add btst https://github.com/better-stack-ai/better-auth.git`
+- **Personal fork:** `https://github.com/olliethedev/better-auth.git` (`origin`) — a sibling fork; pushing branches here is fine for backup, but **PRs created from it against `better-stack-ai` fail** (`gh` reports `Head sha can't be blank... not all refs are readable`). Always push the sync branch to the product repo and open the PR there.
 - **Upstream:** `https://github.com/better-auth/better-auth.git` — tracked as `upstream` remote (already configured)
+- **Git identity:** commits must use the noreply email `5933733+olliethedev@users.noreply.github.com` (repo-local `git config user.email` is set to this). GitHub rejects pushes containing the private email with `push declined due to email privacy restrictions`. If a commit was made with the wrong email, amend it before pushing.
 - **Our packages:** all live under `packages/btst/` — upstream never touches this directory, so **there are no btst-specific merge conflicts**
 
 ### What we own (never accept upstream's version for these)
@@ -288,9 +290,19 @@ pnpm turbo test --continue --filter="./packages/btst/*"
 - `@btst/adapter-memory` tests — all pass
 - `@btst/cli` `schema-conversion.test.ts` — all pass
 - `@btst/cli` `generate-all-orms.test.ts` — all pass (uses SQLite)
-- `@btst/cli` `e2e-cli.test.ts` — **fails** (needs live Postgres + MySQL — CI only)
+- `@btst/cli` `e2e-cli.test.ts` — **fails with `ECONNREFUSED`** (needs live Postgres + MySQL)
 
-The e2e failures are expected locally. CI provides the databases.
+If Docker is available locally, run the e2e tests too instead of deferring to CI:
+
+```bash
+docker compose up -d --wait
+# The btst e2e tests only need postgres-kysely (:5433) and mysql-kysely (:3307).
+# The main `postgres` container (:5432) may fail to bind if another local
+# project holds the port — that's fine, it isn't used by these tests.
+cd packages/btst/cli && pnpm vitest run test/e2e-cli.test.ts
+```
+
+Known flake: `should run generate command for Drizzle` can hit its 10s timeout when run as part of the full file (cold start). Re-run it in isolation (`-t "should run generate command for Drizzle"`) — if it passes there, it's fine.
 
 If `generate-all-orms.test.ts` has **snapshot failures**, update them — this means the generators produce slightly different output in the new version (normal for a minor upstream bump):
 
@@ -300,14 +312,39 @@ cd packages/btst/cli && pnpm vitest run -u
 
 Commit the updated snapshots as part of the sync PR.
 
+#### 9c. Verify the published-package surface
+
+Quick confidence check that every `@btst` package's exports actually resolve from the built `dist` (catches missing build entries, broken exports maps, and unbundled new files):
+
+```bash
+# Exports-map / packaging lint for each package
+for p in packages/btst/*/; do (cd $p && pnpm exec publint); done
+
+# Smoke-import every export subpath (ESM and CJS) and check expected symbols, e.g.:
+node -e "import('./packages/btst/db/dist/index.mjs').then(m=>console.log(Object.keys(m)))"
+node -e "console.log(Object.keys(require('./packages/btst/adapter-kysely/dist/index.cjs')))"
+```
+
+Expected exports: `@btst/db` → `defineDb`, `createDbPlugin`; `@btst/plugins` → `createDbPlugin`, `todoPlugin`; each adapter → `xxxAdapter` + `createXxxAdapter`; `@btst/adapter-kysely/node-sqlite-dialect` → `NodeSqliteDialect`.
+
 ### 10. Commit and open a PR
+
+**The PR must be a same-repo PR in `better-stack-ai/better-auth`** (see Context). Cross-fork PRs from `origin` (olliethedev) fail.
 
 ```bash
 git add -A
 git commit -m "chore: sync upstream ${TAG} + bump @btst to vY.Y.Y"
-git push -u origin HEAD
-# then open a PR → main
+
+# Push to the product repo (add the remote first if missing:
+#   git remote add btst https://github.com/better-stack-ai/better-auth.git )
+git push -u btst HEAD
+
+gh pr create --repo better-stack-ai/better-auth --base main \
+  --title "chore: sync upstream ${TAG} + bump @btst to vY.Y.Y" \
+  --body "..."
 ```
+
+Note: the lefthook pre-commit `spell` hook checks **staged files**, including `.github/**` which the root `pnpm lint:spell` (`cspell .`) skips. If the commit fails on words from upstream's workflow/template files, add them to the appropriate `.cspell/*.txt` and retry — don't bypass the hook.
 
 ### 11. Release (after PR is merged)
 
