@@ -1048,6 +1048,9 @@ importers:
         specifier: workspace:*
         version: link:../db
     devDependencies:
+      '@better-auth/core':
+        specifier: workspace:*
+        version: link:../../core
       '@cloudflare/workers-types':
         specifier: ^4.20260410.1
         version: 4.20260609.1
@@ -1055,8 +1058,8 @@ importers:
         specifier: workspace:*
         version: link:../../better-auth
       kysely:
-        specifier: ^0.28.14
-        version: 0.28.17
+        specifier: 'catalog:'
+        version: 0.29.2
       typescript:
         specifier: 'catalog:'
         version: 5.9.3

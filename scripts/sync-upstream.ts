@@ -32,10 +32,10 @@ const __dirname = dirname(__filename);
 
 const HEADER_COMMENT = `/**
  * ⚠️ AUTO-GENERATED - DO NOT MODIFY
- * 
+ *
  * This file is automatically copied from better-auth.
  * Source: {SOURCE_PATH}
- * 
+ *
  * To update: run \`pnpm sync-upstream\`
  * Any manual changes will be overwritten.
  */
@@ -44,14 +44,14 @@ const HEADER_COMMENT = `/**
 
 const HEADER_COMMENT_WITH_PATCHES = `/**
  * ⚠️ AUTO-GENERATED WITH PATCHES - DO NOT MODIFY
- * 
+ *
  * This file is automatically copied from better-auth with patches applied.
  * Source: {SOURCE_PATH}
- * 
+ *
  * Patches applied:
  * - @better-auth/core/utils imports replaced with local ../utils/string
  *   (avoids dependency issues with published @better-auth/core package)
- * 
+ *
  * To update: run \`pnpm sync-upstream\`
  * Any manual changes will be overwritten.
  */
@@ -112,6 +112,7 @@ const COPY_CONFIGS: CopyConfig[] = [
 			"bun-sqlite-dialect.ts",
 			"d1-sqlite-dialect.ts",
 			"node-sqlite-dialect.ts",
+			"kysely-migration-tables.ts",
 		],
 		transformImports: (content: string) => {
 			// Map @better-auth/core subpath imports to their published equivalents.

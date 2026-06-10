@@ -366,6 +366,14 @@ Tag convention: `btst-v2.1.0` → published as `latest`
   ```
   This covers `ci.yml`, `e2e.yml`, and any new workflows upstream added in the release (e.g. `auto-changeset.yml`, `promote.yml`, `verify-changesets.yml`, etc.).
 
+- **`packageManager` bumps may break standalone pnpm** — upstream bumped to `pnpm@11.1.1` in v1.6.16, which has no standalone binary published (`@pnpm/macos-x64@11.1.1` doesn't exist). If `pnpm install` fails with `ERR_PNPM_NO_MATCHING_VERSION` for a `@pnpm/*` platform package, activate the version via corepack instead: `corepack prepare pnpm@<version> --activate`.
+
+- **Keep `@btst/adapter-kysely`'s kysely range in step with upstream** — in v1.6.16 the vendored dialect/introspector files were rewritten against kysely 0.29 types and stopped typechecking against 0.28. When the catalog's `kysely` range changes, mirror it in `packages/btst/adapter-kysely/package.json` (`peerDependencies`) and use `"kysely": "catalog:"` in `devDependencies` so the local typecheck uses the same version upstream develops against.
+
+- **New `@better-auth/core` subpath imports in vendored files need deps** — v1.6.16's kysely-adapter added `import { logger } from "@better-auth/core/env"`. `@btst/adapter-kysely` didn't declare `@better-auth/core` at all (the other adapters already did). If a vendored file gains a `@better-auth/core/*` import, add `"@better-auth/core": ">=1.6.0"` to `peerDependencies` and `"@better-auth/core": "workspace:*"` to `devDependencies` of the affected `@btst` package.
+
+- **Conflicted union files (`knip.jsonc`, `.cspell/*.txt`) need manual merges, not `--theirs`** — both sides append entries to these files. Accepting upstream's side silently drops our btst-specific entries and breaks `pnpm lint:packages` / the lefthook spell check later. Merge both sides by hand.
+
 - **`preview.yml` should be deleted** — upstream's docs preview workflow (`preview.yml`) is only meaningful inside the upstream org (it previously had an `if: github.repository == 'better-auth/better-auth'` guard). After a merge where upstream removes that guard, the workflow will try to run in our fork and fail. Delete it since we don't host the docs:
   ```bash
   rm -f .github/workflows/preview.yml
