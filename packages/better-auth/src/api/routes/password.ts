@@ -153,7 +153,7 @@ export const requestPasswordResetCallback = createAuthEndpoint(
 	"/reset-password/:token",
 	{
 		method: "GET",
-		operationId: "forgetPasswordCallback",
+		operationId: "resetPasswordCallback",
 		query: z.object({
 			callbackURL: z.string().meta({
 				description: "The URL to redirect the user to reset their password",
@@ -323,7 +323,7 @@ export const resetPassword = createAuthEndpoint(
 			}
 		}
 		if (ctx.context.options.emailAndPassword?.revokeSessionsOnPasswordReset) {
-			await ctx.context.internalAdapter.deleteSessions(userId);
+			await ctx.context.internalAdapter.deleteUserSessions(userId);
 		}
 		return ctx.json({
 			status: true,

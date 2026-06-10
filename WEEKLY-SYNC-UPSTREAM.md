@@ -6,8 +6,10 @@
 
 ## Context
 
-- **Our fork:** `git@github.com:olliethedev/better-auth.git` (`origin`)
+- **Product repo (PRs go here):** `https://github.com/better-stack-ai/better-auth` — this is where all sync PRs are opened and merged (same-repo PRs: the branch is pushed to this repo, not to a personal fork). If there is no remote for it yet, add one: `git remote add btst https://github.com/better-stack-ai/better-auth.git`
+- **Personal fork:** `https://github.com/olliethedev/better-auth.git` (`origin`) — a sibling fork; pushing branches here is fine for backup, but **PRs created from it against `better-stack-ai` fail** (`gh` reports `Head sha can't be blank... not all refs are readable`). Always push the sync branch to the product repo and open the PR there.
 - **Upstream:** `https://github.com/better-auth/better-auth.git` — tracked as `upstream` remote (already configured)
+- **Git identity:** commits must use the noreply email `5933733+olliethedev@users.noreply.github.com` (repo-local `git config user.email` is set to this). GitHub rejects pushes containing the private email with `push declined due to email privacy restrictions`. If a commit was made with the wrong email, amend it before pushing.
 - **Our packages:** all live under `packages/btst/` — upstream never touches this directory, so **there are no btst-specific merge conflicts**
 
 ### What we own (never accept upstream's version for these)
@@ -288,9 +290,19 @@ pnpm turbo test --continue --filter="./packages/btst/*"
 - `@btst/adapter-memory` tests — all pass
 - `@btst/cli` `schema-conversion.test.ts` — all pass
 - `@btst/cli` `generate-all-orms.test.ts` — all pass (uses SQLite)
-- `@btst/cli` `e2e-cli.test.ts` — **fails** (needs live Postgres + MySQL — CI only)
+- `@btst/cli` `e2e-cli.test.ts` — **fails with `ECONNREFUSED`** (needs live Postgres + MySQL)
 
-The e2e failures are expected locally. CI provides the databases.
+If Docker is available locally, run the e2e tests too instead of deferring to CI:
+
+```bash
+docker compose up -d --wait
+# The btst e2e tests only need postgres-kysely (:5433) and mysql-kysely (:3307).
+# The main `postgres` container (:5432) may fail to bind if another local
+# project holds the port — that's fine, it isn't used by these tests.
+cd packages/btst/cli && pnpm vitest run test/e2e-cli.test.ts
+```
+
+Known flake: `should run generate command for Drizzle` can hit its 10s timeout when run as part of the full file (cold start). Re-run it in isolation (`-t "should run generate command for Drizzle"`) — if it passes there, it's fine.
 
 If `generate-all-orms.test.ts` has **snapshot failures**, update them — this means the generators produce slightly different output in the new version (normal for a minor upstream bump):
 
@@ -300,14 +312,39 @@ cd packages/btst/cli && pnpm vitest run -u
 
 Commit the updated snapshots as part of the sync PR.
 
+#### 9c. Verify the published-package surface
+
+Quick confidence check that every `@btst` package's exports actually resolve from the built `dist` (catches missing build entries, broken exports maps, and unbundled new files):
+
+```bash
+# Exports-map / packaging lint for each package
+for p in packages/btst/*/; do (cd $p && pnpm exec publint); done
+
+# Smoke-import every export subpath (ESM and CJS) and check expected symbols, e.g.:
+node -e "import('./packages/btst/db/dist/index.mjs').then(m=>console.log(Object.keys(m)))"
+node -e "console.log(Object.keys(require('./packages/btst/adapter-kysely/dist/index.cjs')))"
+```
+
+Expected exports: `@btst/db` → `defineDb`, `createDbPlugin`; `@btst/plugins` → `createDbPlugin`, `todoPlugin`; each adapter → `xxxAdapter` + `createXxxAdapter`; `@btst/adapter-kysely/node-sqlite-dialect` → `NodeSqliteDialect`.
+
 ### 10. Commit and open a PR
+
+**The PR must be a same-repo PR in `better-stack-ai/better-auth`** (see Context). Cross-fork PRs from `origin` (olliethedev) fail.
 
 ```bash
 git add -A
 git commit -m "chore: sync upstream ${TAG} + bump @btst to vY.Y.Y"
-git push -u origin HEAD
-# then open a PR → main
+
+# Push to the product repo (add the remote first if missing:
+#   git remote add btst https://github.com/better-stack-ai/better-auth.git )
+git push -u btst HEAD
+
+gh pr create --repo better-stack-ai/better-auth --base main \
+  --title "chore: sync upstream ${TAG} + bump @btst to vY.Y.Y" \
+  --body "..."
 ```
+
+Note: the lefthook pre-commit `spell` hook checks **staged files**, including `.github/**` which the root `pnpm lint:spell` (`cspell .`) skips. If the commit fails on words from upstream's workflow/template files, add them to the appropriate `.cspell/*.txt` and retry — don't bypass the hook.
 
 ### 11. Release (after PR is merged)
 
@@ -365,6 +402,24 @@ Tag convention: `btst-v2.1.0` → published as `latest`
     .github/workflows/*.yml
   ```
   This covers `ci.yml`, `e2e.yml`, and any new workflows upstream added in the release (e.g. `auto-changeset.yml`, `promote.yml`, `verify-changesets.yml`, etc.).
+
+- **`packageManager` bumps may break standalone pnpm** — upstream bumped to `pnpm@11.1.1` in v1.6.16, which has no standalone binary published (`@pnpm/macos-x64@11.1.1` doesn't exist). If `pnpm install` fails with `ERR_PNPM_NO_MATCHING_VERSION` for a `@pnpm/*` platform package, activate the version via corepack instead: `corepack prepare pnpm@<version> --activate`.
+
+- **Keep `@btst/adapter-kysely`'s kysely range in step with upstream** — in v1.6.16 the vendored dialect/introspector files were rewritten against kysely 0.29 types and stopped typechecking against 0.28. When the catalog's `kysely` range changes, mirror it in `packages/btst/adapter-kysely/package.json` (`peerDependencies`) and use `"kysely": "catalog:"` in `devDependencies` so the local typecheck uses the same version upstream develops against.
+
+- **New `@better-auth/core` subpath imports in vendored files need deps** — v1.6.16's kysely-adapter added `import { logger } from "@better-auth/core/env"`. `@btst/adapter-kysely` didn't declare `@better-auth/core` at all (the other adapters already did). If a vendored file gains a `@better-auth/core/*` import, add `"@better-auth/core": ">=1.6.0"` to `peerDependencies` and `"@better-auth/core": "workspace:*"` to `devDependencies` of the affected `@btst` package.
+
+- **Conflicted union files (`knip.jsonc`, `.cspell/*.txt`) need manual merges, not `--theirs`** — both sides append entries to these files. Accepting upstream's side silently drops our btst-specific entries and breaks `pnpm lint:packages` / the lefthook spell check later. Merge both sides by hand.
+
+- **Watch for the Playwright/Node extract-zip hang in the `Integration test` job** — with Node ≥ 24.16 (`.nvmrc` is `24`, so runners always get the latest), Playwright < 1.60.0 hangs forever right after the browser download hits 100% (yauzl extraction regression, [microsoft/playwright#40724](https://github.com/microsoft/playwright/issues/40724)). Symptom: "Install Playwright Browsers" step stuck for 30+ minutes. Fix: keep `@playwright/test` in `e2e/integration/package.json` at `^1.60.0` or newer; if upstream's merge downgrades it below 1.60, bump it back.
+
+- **BTST CI won't auto-trigger on big sync PRs** — GitHub evaluates `paths:` filters against only the first 300 changed files of a PR, and sync PRs typically change 500+. The `packages/btst/**` filter therefore never matches and the `BTST CI` workflow silently doesn't run. After opening the sync PR, dispatch it manually and verify it passes:
+  ```bash
+  gh workflow run "BTST CI" --repo better-stack-ai/better-auth --ref sync-upstream-${TAG}
+  gh run list --repo better-stack-ai/better-auth --workflow "BTST CI" --branch sync-upstream-${TAG}
+  ```
+
+- **`verify-changesets.yml` carries a fork guard** — `@btst` versioning is manual (no changesets), so upstream's "Verify Changesets" check would always fail on sync PRs (`Missing changeset`). Our copy has `if: github.repository == 'better-auth/better-auth'` on the `verify` job so it skips in the fork. When upstream's version of this file conflicts during a merge, accept theirs and **re-apply the guard**. (Alternative if the guard is ever lost: add the `skip-changeset` label to the PR.)
 
 - **`preview.yml` should be deleted** — upstream's docs preview workflow (`preview.yml`) is only meaningful inside the upstream org (it previously had an `if: github.repository == 'better-auth/better-auth'` guard). After a merge where upstream removes that guard, the workflow will try to run in our fork and fail. Delete it since we don't host the docs:
   ```bash

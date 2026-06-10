@@ -9,6 +9,7 @@ import { toChecksumAddress } from "../../utils/hashing";
 import { isAPIError } from "../../utils/is-api-error";
 import { getOrigin } from "../../utils/url";
 import { PACKAGE_VERSION } from "../../version";
+import { normalizeSiweDomain, parseSiweMessage } from "./parse-message";
 import type { WalletAddressSchema } from "./schema";
 import { schema } from "./schema";
 import type {
@@ -36,41 +37,60 @@ export interface SIWEPluginOptions {
 	schema?: InferOptionSchema<typeof schema> | undefined;
 }
 
-const getSiweNonceBodySchema = z.object({
-	walletAddress: z
-		.string()
-		.regex(/^0[xX][a-fA-F0-9]{40}$/i)
-		.length(42),
-	chainId: z.number().int().positive().optional().default(1),
-});
+const walletAddressInputSchema = z
+	.string()
+	.regex(/^0[xX][a-fA-F0-9]{40}$/i)
+	.length(42);
 
-export const siwe = (options: SIWEPluginOptions) =>
-	({
+const getSiweNonceBodySchema = z
+	.object({
+		walletAddress: walletAddressInputSchema.optional(),
+		address: walletAddressInputSchema.optional(),
+		chainId: z.number().int().positive().optional().default(1),
+	})
+	.refine((body) => body.walletAddress || body.address, {
+		message: "walletAddress or address is required",
+		path: ["walletAddress"],
+	});
+
+export const siwe = (options: SIWEPluginOptions) => {
+	const createSiweNonceEndpoint = (path: "/siwe/nonce" | "/siwe/get-nonce") =>
+		createAuthEndpoint(
+			path,
+			{
+				method: "POST",
+				body: getSiweNonceBodySchema,
+			},
+			async (ctx) => {
+				const rawWalletAddress = ctx.body.walletAddress ?? ctx.body.address;
+				if (!rawWalletAddress) {
+					throw APIError.fromStatus("BAD_REQUEST", {
+						message: "walletAddress or address is required",
+						status: 400,
+					});
+				}
+				const { chainId } = ctx.body;
+				const walletAddress = toChecksumAddress(rawWalletAddress);
+				const nonce = await options.getNonce();
+
+				// Store nonce with wallet address and chain ID context
+				await ctx.context.internalAdapter.createVerificationValue({
+					identifier: `siwe:${walletAddress}:${chainId}`,
+					value: nonce,
+					expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+				});
+
+				return ctx.json({ nonce });
+			},
+		);
+
+	return {
 		id: "siwe",
 		version: PACKAGE_VERSION,
 		schema: mergeSchema(schema, options?.schema) as WalletAddressSchema,
 		endpoints: {
-			getSiweNonce: createAuthEndpoint(
-				"/siwe/nonce",
-				{
-					method: "POST",
-					body: getSiweNonceBodySchema,
-				},
-				async (ctx) => {
-					const { walletAddress: rawWalletAddress, chainId } = ctx.body;
-					const walletAddress = toChecksumAddress(rawWalletAddress);
-					const nonce = await options.getNonce();
-
-					// Store nonce with wallet address and chain ID context
-					await ctx.context.internalAdapter.createVerificationValue({
-						identifier: `siwe:${walletAddress}:${chainId}`,
-						value: nonce,
-						expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-					});
-
-					return ctx.json({ nonce });
-				},
-			),
+			getSiweNonce: createSiweNonceEndpoint("/siwe/nonce"),
+			getNonce: createSiweNonceEndpoint("/siwe/get-nonce"),
 			verifySiweMessage: createAuthEndpoint(
 				"/siwe/verify",
 				{
@@ -129,6 +149,63 @@ export const siwe = (options: SIWEPluginOptions) =>
 
 						// Verify SIWE message with enhanced parameters
 						const { value: nonce } = verification;
+
+						// Bind the *signed* message to server state before accepting the
+						// signature. Signature recovery alone (the documented `verifyMessage`
+						// using viem) does NOT inspect the message body, so a previously
+						// produced signature (stale, for another domain, or over an
+						// arbitrary string) could otherwise be presented alongside a freshly
+						// minted nonce. Parse the ERC-4361 message ourselves and require the
+						// nonce, address, chain id, and domain to match the server-issued
+						// values, plus honor the signed time bounds.
+						const parsedMessage = parseSiweMessage(message);
+						const nonceMatches = parsedMessage.nonce === nonce;
+						const addressMatches =
+							!!parsedMessage.address &&
+							parsedMessage.address.toLowerCase() ===
+								walletAddress.toLowerCase();
+						const chainMatches = parsedMessage.chainId === chainId;
+						const domainMatches =
+							!!parsedMessage.domain &&
+							normalizeSiweDomain(parsedMessage.domain) ===
+								normalizeSiweDomain(options.domain);
+
+						if (
+							!nonceMatches ||
+							!addressMatches ||
+							!chainMatches ||
+							!domainMatches
+						) {
+							throw APIError.fromStatus("UNAUTHORIZED", {
+								message:
+									"Unauthorized: SIWE message does not match the expected nonce, domain, address, or chain ID",
+								status: 401,
+								code: "UNAUTHORIZED_SIWE_MESSAGE_MISMATCH",
+							});
+						}
+
+						const now = Date.now();
+						if (parsedMessage.expirationTime) {
+							const expiresAt = Date.parse(parsedMessage.expirationTime);
+							if (!Number.isNaN(expiresAt) && now >= expiresAt) {
+								throw APIError.fromStatus("UNAUTHORIZED", {
+									message: "Unauthorized: SIWE message has expired",
+									status: 401,
+									code: "UNAUTHORIZED_SIWE_MESSAGE_EXPIRED",
+								});
+							}
+						}
+						if (parsedMessage.notBefore) {
+							const notBefore = Date.parse(parsedMessage.notBefore);
+							if (!Number.isNaN(notBefore) && now < notBefore) {
+								throw APIError.fromStatus("UNAUTHORIZED", {
+									message: "Unauthorized: SIWE message is not yet valid",
+									status: 401,
+									code: "UNAUTHORIZED_SIWE_MESSAGE_NOT_YET_VALID",
+								});
+							}
+						}
+
 						const verified = await options.verifyMessage({
 							message,
 							signature,
@@ -305,4 +382,5 @@ export const siwe = (options: SIWEPluginOptions) =>
 			),
 		},
 		options,
-	}) satisfies BetterAuthPlugin;
+	} satisfies BetterAuthPlugin;
+};

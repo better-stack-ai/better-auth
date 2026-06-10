@@ -13,6 +13,7 @@ base64urlnopad
 remoteip
 noreferrer
 noopener
+Referer
 pcre
 llms
 svgjs
@@ -60,3 +61,14 @@ zizmor
 zizmorcore
 isready
 orms
+IMDS
+WHATWG
+CIMD
+Oligo
+febf
+fdff
+fffe
+vbscript
+unvalidated
+anthropics
+ECONNREFUSED
