@@ -411,6 +411,12 @@ Tag convention: `btst-v2.1.0` → published as `latest`
 
 - **Conflicted union files (`knip.jsonc`, `.cspell/*.txt`) need manual merges, not `--theirs`** — both sides append entries to these files. Accepting upstream's side silently drops our btst-specific entries and breaks `pnpm lint:packages` / the lefthook spell check later. Merge both sides by hand.
 
+- **BTST CI won't auto-trigger on big sync PRs** — GitHub evaluates `paths:` filters against only the first 300 changed files of a PR, and sync PRs typically change 500+. The `packages/btst/**` filter therefore never matches and the `BTST CI` workflow silently doesn't run. After opening the sync PR, dispatch it manually and verify it passes:
+  ```bash
+  gh workflow run "BTST CI" --repo better-stack-ai/better-auth --ref sync-upstream-${TAG}
+  gh run list --repo better-stack-ai/better-auth --workflow "BTST CI" --branch sync-upstream-${TAG}
+  ```
+
 - **`verify-changesets.yml` carries a fork guard** — `@btst` versioning is manual (no changesets), so upstream's "Verify Changesets" check would always fail on sync PRs (`Missing changeset`). Our copy has `if: github.repository == 'better-auth/better-auth'` on the `verify` job so it skips in the fork. When upstream's version of this file conflicts during a merge, accept theirs and **re-apply the guard**. (Alternative if the guard is ever lost: add the `skip-changeset` label to the PR.)
 
 - **`preview.yml` should be deleted** — upstream's docs preview workflow (`preview.yml`) is only meaningful inside the upstream org (it previously had an `if: github.repository == 'better-auth/better-auth'` guard). After a merge where upstream removes that guard, the workflow will try to run in our fork and fail. Delete it since we don't host the docs:

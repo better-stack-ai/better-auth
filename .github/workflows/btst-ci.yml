@@ -1,6 +1,11 @@
 name: BTST CI
 
 on:
+  # Manual trigger for large upstream-sync PRs: GitHub only evaluates `paths`
+  # filters against the first 300 changed files, so sync PRs (often 500+ files)
+  # never trigger this workflow automatically. Dispatch it on the sync branch:
+  #   gh workflow run "BTST CI" --ref <sync-branch>
+  workflow_dispatch:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
