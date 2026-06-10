@@ -411,6 +411,8 @@ Tag convention: `btst-v2.1.0` → published as `latest`
 
 - **Conflicted union files (`knip.jsonc`, `.cspell/*.txt`) need manual merges, not `--theirs`** — both sides append entries to these files. Accepting upstream's side silently drops our btst-specific entries and breaks `pnpm lint:packages` / the lefthook spell check later. Merge both sides by hand.
 
+- **Watch for the Playwright/Node extract-zip hang in the `Integration test` job** — with Node ≥ 24.16 (`.nvmrc` is `24`, so runners always get the latest), Playwright < 1.60.0 hangs forever right after the browser download hits 100% (yauzl extraction regression, [microsoft/playwright#40724](https://github.com/microsoft/playwright/issues/40724)). Symptom: "Install Playwright Browsers" step stuck for 30+ minutes. Fix: keep `@playwright/test` in `e2e/integration/package.json` at `^1.60.0` or newer; if upstream's merge downgrades it below 1.60, bump it back.
+
 - **BTST CI won't auto-trigger on big sync PRs** — GitHub evaluates `paths:` filters against only the first 300 changed files of a PR, and sync PRs typically change 500+. The `packages/btst/**` filter therefore never matches and the `BTST CI` workflow silently doesn't run. After opening the sync PR, dispatch it manually and verify it passes:
   ```bash
   gh workflow run "BTST CI" --repo better-stack-ai/better-auth --ref sync-upstream-${TAG}
