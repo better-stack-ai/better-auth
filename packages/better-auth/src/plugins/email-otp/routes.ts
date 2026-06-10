@@ -532,7 +532,11 @@ export const verifyEmailOTP = (opts: RequiredEmailOTPOptions) =>
 				});
 			}
 			const currentSession = await getSessionFromCtx(ctx);
-			if (currentSession && updatedUser.emailVerified) {
+			if (
+				currentSession &&
+				updatedUser.emailVerified &&
+				currentSession.user.id === updatedUser.id
+			) {
 				const dontRememberMeCookie = await ctx.getSignedCookie(
 					ctx.context.authCookies.dontRememberToken.name,
 					ctx.context.secret,
@@ -745,7 +749,7 @@ export const requestPasswordResetEmailOTP = (opts: RequiredEmailOTPOptions) =>
 			},
 		},
 		async (ctx) => {
-			const email = ctx.body.email;
+			const email = ctx.body.email.toLowerCase();
 			const identifier = toOTPIdentifier("forget-password", email);
 			const otp = await resolveOTP(ctx, opts, email, "forget-password");
 			const user = await ctx.context.internalAdapter.findUserByEmail(email);
@@ -837,7 +841,7 @@ export const forgetPasswordEmailOTP = (opts: RequiredEmailOTPOptions) => {
 		},
 		async (ctx) => {
 			warnDeprecation();
-			const email = ctx.body.email;
+			const email = ctx.body.email.toLowerCase();
 			const identifier = toOTPIdentifier("forget-password", email);
 			const otp = await resolveOTP(ctx, opts, email, "forget-password");
 			const user = await ctx.context.internalAdapter.findUserByEmail(email);
@@ -924,7 +928,7 @@ export const resetPasswordEmailOTP = (opts: RequiredEmailOTPOptions) =>
 			},
 		},
 		async (ctx) => {
-			const email = ctx.body.email;
+			const email = ctx.body.email.toLowerCase();
 
 			// Use atomic verification to prevent race conditions
 			await atomicVerifyOTP(
@@ -982,7 +986,7 @@ export const resetPasswordEmailOTP = (opts: RequiredEmailOTPOptions) =>
 			}
 
 			if (ctx.context.options.emailAndPassword?.revokeSessionsOnPasswordReset) {
-				await ctx.context.internalAdapter.deleteSessions(user.user.id);
+				await ctx.context.internalAdapter.deleteUserSessions(user.user.id);
 			}
 			return ctx.json({
 				success: true,

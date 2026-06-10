@@ -679,7 +679,8 @@ export const setActiveTeam = <O extends OrganizationOptions>(options: O) =>
 			use: [orgSessionMiddleware, orgMiddleware],
 			metadata: {
 				openapi: {
-					description: "Set the active team",
+					description:
+						"Set the active team for the current active organization",
 					responses: {
 						"200": {
 							description: "Success",
@@ -734,7 +735,19 @@ export const setActiveTeam = <O extends OrganizationOptions>(options: O) =>
 				teamId = ctx.body.teamId;
 			}
 
-			const team = await adapter.findTeamById({ teamId });
+			const activeOrganizationId = session.session.activeOrganizationId;
+
+			if (!activeOrganizationId) {
+				throw APIError.from(
+					"BAD_REQUEST",
+					ORGANIZATION_ERROR_CODES.NO_ACTIVE_ORGANIZATION,
+				);
+			}
+
+			const team = await adapter.findTeamById({
+				teamId,
+				organizationId: activeOrganizationId,
+			});
 
 			if (!team) {
 				throw APIError.from(
@@ -809,7 +822,26 @@ export const listUserTeams = <O extends OrganizationOptions>(options: O) =>
 				userId: session.user.id,
 			});
 
-			return ctx.json(teams);
+			// Only return teams that belong to an organization the caller is
+			// actually a member of. A teamMember row on its own is not enough —
+			// a stray row could otherwise surface another organization's team
+			// metadata.
+			const orgIds = [...new Set(teams.map((team) => team.organizationId))];
+			const memberships = await Promise.all(
+				orgIds.map((organizationId) =>
+					adapter.checkMembership({
+						userId: session.user.id,
+						organizationId,
+					}),
+				),
+			);
+			const memberOrgIds = new Set(
+				orgIds.filter((_, index) => memberships[index]),
+			);
+
+			return ctx.json(
+				teams.filter((team) => memberOrgIds.has(team.organizationId)),
+			);
 		},
 	);
 
@@ -883,6 +915,28 @@ export const listTeamMembers = <O extends OrganizationOptions>(options: O) =>
 				throw APIError.from(
 					"BAD_REQUEST",
 					ORGANIZATION_ERROR_CODES.YOU_DO_NOT_HAVE_AN_ACTIVE_TEAM,
+				);
+			}
+			// Resolve the team to its organization and confirm the caller is a
+			// member of that organization. A teamMember row alone is not
+			// sufficient: a stray row pointing at another organization's team
+			// would otherwise return that team's member list. Organization
+			// membership is the requirement here.
+			const team = await adapter.findTeamById({ teamId });
+			if (!team) {
+				throw APIError.from(
+					"BAD_REQUEST",
+					ORGANIZATION_ERROR_CODES.TEAM_NOT_FOUND,
+				);
+			}
+			const isOrgMember = await adapter.checkMembership({
+				userId: session.user.id,
+				organizationId: team.organizationId,
+			});
+			if (!isOrgMember) {
+				throw APIError.from(
+					"BAD_REQUEST",
+					ORGANIZATION_ERROR_CODES.USER_IS_NOT_A_MEMBER_OF_THE_TEAM,
 				);
 			}
 			const member = await adapter.findTeamMember({

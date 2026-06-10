@@ -24,6 +24,7 @@
 		"packages/cli/src/commands/init/index.ts": ["exports"],
 		"packages/cli/src/commands/init/utility/imports.ts": ["exports"],
 		"packages/sso/src/saml/assertions.ts": ["exports"],
+		"packages/sso/src/oidc/discovery.ts": ["exports"],
 		// btst/cli: public programmatic API not consumed internally
 		"packages/btst/cli/src/generators/index.ts": ["exports", "duplicates"],
 		"packages/btst/cli/src/utils/filter-auth-tables.ts": ["exports"],
