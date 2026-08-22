@@ -1,6 +1,6 @@
 {
   "name": "@btst/db",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "description": "Core database utilities and schema definition for btst",
   "type": "module",
   "license": "MIT",
@@ -40,11 +40,15 @@
       }
     }
   },
-  "dependencies": {
-    "@better-auth/core": "workspace:*",
-    "better-auth": "workspace:*"
+  "peerDependencies": {
+    "@better-auth/core": "1.6.16",
+    "@better-auth/utils": "0.4.1",
+    "better-auth": "1.6.16"
   },
   "devDependencies": {
+    "@better-auth/core": "workspace:*",
+    "@better-auth/utils": "catalog:",
+    "better-auth": "workspace:*",
     "typescript": "catalog:",
     "unbuild": "catalog:",
     "vitest": "catalog:"

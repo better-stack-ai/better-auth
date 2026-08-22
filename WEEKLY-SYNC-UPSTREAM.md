@@ -193,7 +193,7 @@ All 8 packages under `packages/btst/` should be bumped together:
 
 Note: `@btst` versioning is independent of upstream's version scheme. An upstream minor release does **not** automatically mandate a minor `@btst` bump — what matters is whether *our* packages gain new functionality.
 
-Edit each `packages/btst/*/package.json` and update `"version"`. Also update any `peerDependencies` referencing `"better-auth"` to reflect the new minimum version (e.g. `">=1.4.0"` → `">=1.5.0"`) when syncing a minor upstream release.
+Edit each `packages/btst/*/package.json` and update `"version"`. Also pin any `peerDependencies` referencing `"better-auth"`, `"@better-auth/core"`, or `"@better-auth/utils"` to the exact versions in the synced release. Broad ranges can resolve multiple incompatible Better Auth type universes in a consumer application.
 
 Packages to update:
 - `packages/btst/db/package.json`
@@ -407,7 +407,7 @@ Tag convention: `btst-v2.1.0` → published as `latest`
 
 - **Keep `@btst/adapter-kysely`'s kysely range in step with upstream** — in v1.6.16 the vendored dialect/introspector files were rewritten against kysely 0.29 types and stopped typechecking against 0.28. When the catalog's `kysely` range changes, mirror it in `packages/btst/adapter-kysely/package.json` (`peerDependencies`) and use `"kysely": "catalog:"` in `devDependencies` so the local typecheck uses the same version upstream develops against.
 
-- **New `@better-auth/core` subpath imports in vendored files need deps** — v1.6.16's kysely-adapter added `import { logger } from "@better-auth/core/env"`. `@btst/adapter-kysely` didn't declare `@better-auth/core` at all (the other adapters already did). If a vendored file gains a `@better-auth/core/*` import, add `"@better-auth/core": ">=1.6.0"` to `peerDependencies` and `"@better-auth/core": "workspace:*"` to `devDependencies` of the affected `@btst` package.
+- **New `@better-auth/core` subpath imports in vendored files need deps** — v1.6.16's kysely-adapter added `import { logger } from "@better-auth/core/env"`. `@btst/adapter-kysely` didn't declare `@better-auth/core` at all (the other adapters already did). If a vendored file gains a `@better-auth/core/*` import, add the exact synced version (for example, `"@better-auth/core": "1.6.16"`) to `peerDependencies` and `"@better-auth/core": "workspace:*"` to `devDependencies` of the affected `@btst` package.
 
 - **Conflicted union files (`knip.jsonc`, `.cspell/*.txt`) need manual merges, not `--theirs`** — both sides append entries to these files. Accepting upstream's side silently drops our btst-specific entries and breaks `pnpm lint:packages` / the lefthook spell check later. Merge both sides by hand.
 
