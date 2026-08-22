@@ -3,6 +3,12 @@ name: Better DB Release
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing btst-v* tag to publish
+        required: true
+        type: string
 
 permissions:
   id-token: write
@@ -16,6 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
+          ref: ${{ github.event.release.tag_name || inputs.release_tag }}
           fetch-depth: 0
 
       - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
@@ -25,10 +32,10 @@ jobs:
           node-version: 22.22.1
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Update npm
-        run: npm install -g npm@latest
+      - name: Install npm with trusted publishing support
+        run: npm install -g npm@11.17.0
 
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
 
       - name: Build packages
         run: |
@@ -47,31 +54,33 @@ jobs:
       - name: Determine npm tag
         id: determine_npm_tag
         shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
         run: |
-          # Extract version from tag (works for both tag push and release events)
-          if [[ "${{ github.event_name }}" == "release" ]]; then
-            TAG="${{ github.event.release.tag_name }}"
-          else
-            TAG="${GITHUB_REF#refs/tags/}"
+          set -euo pipefail
+
+          if [[ ! "$RELEASE_TAG" =~ ^btst-v ]]; then
+            echo "Release tag must start with btst-v; found $RELEASE_TAG"
+            exit 1
           fi
-          
-          # Only process btst tags
-          if [[ ! "$TAG" =~ ^btst-v ]]; then
-            echo "Not a btst release tag, skipping..."
-            exit 0
-          fi
-          
-          # Remove btst- prefix
-          VERSION="${TAG#btst-}"
-          
+
+          VERSION="${RELEASE_TAG#btst-v}"
+          while IFS= read -r package_json; do
+            PACKAGE_NAME=$(node -p "require('./$package_json').name")
+            PACKAGE_VERSION=$(node -p "require('./$package_json').version")
+            if [ "$PACKAGE_VERSION" != "$VERSION" ]; then
+              echo "$PACKAGE_NAME version ($PACKAGE_VERSION) does not match tag version ($VERSION)"
+              exit 1
+            fi
+          done < <(find packages/btst -mindepth 2 -maxdepth 2 -name package.json -print | sort)
+
           if [[ "$VERSION" =~ -(next|canary|beta|rc|alpha) ]]; then
-            # Extract pre-release tag (e.g., beta, rc, alpha)
             NPM_TAG=${BASH_REMATCH[1]}
           else
-            # Stable release
             NPM_TAG="latest"
           fi
-          echo "npm_tag=$NPM_TAG" >> $GITHUB_OUTPUT
+
+          echo "npm_tag=$NPM_TAG" >> "$GITHUB_OUTPUT"
           echo "Using npm tag: $NPM_TAG for version: $VERSION"
 
       - name: Copy README to each package
@@ -100,14 +109,32 @@ jobs:
           done
 
       - name: Publish @btst/* packages to npm
+        env:
+          NPM_TAG: ${{ steps.determine_npm_tag.outputs.npm_tag }}
         run: |
+          set -euo pipefail
+
           # Only publish btst packages
           cd packages/btst
           for dir in db cli plugins adapter-*; do
             if [ -d "$dir" ]; then
-              echo "Publishing @btst/${dir}..."
               cd "$dir"
-              pnpm publish --access public --no-git-checks --tag ${{ steps.determine_npm_tag.outputs.npm_tag }}
+              PACKAGE_NAME=$(node -p "require('./package.json').name")
+              PACKAGE_VERSION=$(node -p "require('./package.json').version")
+              if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version >/dev/null 2>&1; then
+                echo "$PACKAGE_NAME@$PACKAGE_VERSION is already published; skipping."
+              else
+                echo "Publishing $PACKAGE_NAME@$PACKAGE_VERSION..."
+                npm publish --access public --provenance --tag "$NPM_TAG"
+              fi
               cd ..
             fi
           done
+
+      - name: Upload npm logs on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: npm-debug-logs
+          path: /home/runner/.npm/_logs/
+          retention-days: 7
