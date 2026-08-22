@@ -116,6 +116,7 @@ jobs:
 
           # Only publish btst packages
           cd packages/btst
+          mkdir -p "$RUNNER_TEMP/btst-packages"
           for dir in db cli plugins adapter-*; do
             if [ -d "$dir" ]; then
               cd "$dir"
@@ -125,7 +126,12 @@ jobs:
                 echo "$PACKAGE_NAME@$PACKAGE_VERSION is already published; skipping."
               else
                 echo "Publishing $PACKAGE_NAME@$PACKAGE_VERSION..."
-                npm publish --access public --provenance --tag "$NPM_TAG"
+                PACKAGE_TARBALL=$(pnpm pack --json --pack-destination "$RUNNER_TEMP/btst-packages" | node -e 'let input = ""; process.stdin.on("data", (chunk) => input += chunk); process.stdin.on("end", () => process.stdout.write(JSON.parse(input).filename))')
+                if tar -xOf "$PACKAGE_TARBALL" package/package.json | grep -q 'workspace:'; then
+                  echo "$PACKAGE_NAME@$PACKAGE_VERSION tarball contains an unresolved workspace dependency"
+                  exit 1
+                fi
+                npm publish "$PACKAGE_TARBALL" --access public --provenance --tag "$NPM_TAG"
               fi
               cd ..
             fi
