@@ -2,6 +2,7 @@
 
 import chalk from "chalk";
 import { Command } from "commander";
+import packageManifest from "../package.json" with { type: "json" };
 import { generateCommand } from "./commands/generate";
 import { initCommand } from "./commands/init";
 import { migrateCommand } from "./commands/migrate";
@@ -17,7 +18,7 @@ async function main() {
 		.addCommand(generateCommand)
 		.addCommand(initCommand)
 		.addCommand(migrateCommand)
-		.version("2.2.1")
+		.version(packageManifest.version)
 		.description("Better DB CLI - Database utilities without auth domain")
 		.action(() => program.help());
 

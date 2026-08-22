@@ -1029,6 +1029,9 @@ importers:
       '@better-auth/core':
         specifier: workspace:*
         version: link:../../core
+      '@better-auth/utils':
+        specifier: 'catalog:'
+        version: 0.4.1
       better-auth:
         specifier: workspace:*
         version: link:../../better-auth
@@ -1051,6 +1054,9 @@ importers:
       '@better-auth/core':
         specifier: workspace:*
         version: link:../../core
+      '@better-auth/utils':
+        specifier: 'catalog:'
+        version: 0.4.1
       '@cloudflare/workers-types':
         specifier: ^4.20260410.1
         version: 4.20260609.1
@@ -1076,6 +1082,9 @@ importers:
       '@better-auth/core':
         specifier: workspace:*
         version: link:../../core
+      '@better-auth/utils':
+        specifier: 'catalog:'
+        version: 0.4.1
       better-auth:
         specifier: workspace:*
         version: link:../../better-auth
@@ -1098,6 +1107,9 @@ importers:
       '@better-auth/core':
         specifier: workspace:*
         version: link:../../core
+      '@better-auth/utils':
+        specifier: 'catalog:'
+        version: 0.4.1
       better-auth:
         specifier: workspace:*
         version: link:../../better-auth
@@ -1126,6 +1138,9 @@ importers:
       '@better-auth/core':
         specifier: workspace:*
         version: link:../../core
+      '@better-auth/utils':
+        specifier: 'catalog:'
+        version: 0.4.1
       better-auth:
         specifier: workspace:*
         version: link:../../better-auth
@@ -1166,6 +1181,9 @@ importers:
       '@better-auth/core':
         specifier: workspace:*
         version: link:../../core
+      '@better-auth/utils':
+        specifier: 'catalog:'
+        version: 0.4.1
       '@prisma/client':
         specifier: ^5.22.0
         version: 5.22.0(prisma@7.4.1(@types/react@19.2.14)(better-sqlite3@12.6.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))
@@ -1214,14 +1232,16 @@ importers:
         version: 8.19.0
 
   packages/btst/db:
-    dependencies:
+    devDependencies:
       '@better-auth/core':
         specifier: workspace:*
         version: link:../../core
+      '@better-auth/utils':
+        specifier: 'catalog:'
+        version: 0.4.1
       better-auth:
         specifier: workspace:*
         version: link:../../better-auth
-    devDependencies:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3

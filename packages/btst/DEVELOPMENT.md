@@ -73,9 +73,13 @@ Only add what's necessary for the database-focused API. Everything else should b
 
 ### 3. Version Alignment
 
-- `@btst/*@2.1.x` tracks `better-auth@1.5.x`
+- `@btst/*@2.2.x` tracks `better-auth@1.6.16`
 - Minor `@btst` bump = minor `better-auth` bump (1.4→1.5 maps to 2.0→2.1)
 - Patch `@btst` bump = patch `better-auth` bump only
+- Pin `better-auth`, `@better-auth/core`, and `@better-auth/utils` peers to the
+  exact versions in the synced Better Auth release. Better Auth patch releases
+  can change shared adapter types, so broad peer ranges can produce duplicate,
+  incompatible type universes in consumers.
 - Import from Better Auth internally: `import ... from "better-auth/..."`
 
 ## Making Changes
@@ -243,7 +247,8 @@ pnpm turbo test --continue --filter="./packages/btst/*"
    ```bash
    # Edit each packages/btst/*/package.json:
    # "version": "2.1.0" (or next version)
-   # peerDependencies: "better-auth": ">=1.5.0"
+   # peerDependencies: "better-auth": "1.6.16"
+   # peerDependencies: "@better-auth/utils": "0.4.1"
    ```
 
 2. Commit, push, and tag:
