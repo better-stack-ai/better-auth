@@ -16,6 +16,17 @@ export interface BtstCliReleasePlan {
 	npmTag: string;
 }
 
+export function formatBtstCliReleasePlan(plan: BtstCliReleasePlan): string {
+	return (
+		[
+			`package_directory=${plan.packageDirectory}`,
+			`package_name=${plan.packageName}`,
+			`version=${plan.version}`,
+			`npm_tag=${plan.npmTag}`,
+		].join("\n") + "\n"
+	);
+}
+
 /** Builds a release plan that can only target the @btst/cli package. */
 export function createBtstCliReleasePlan(
 	releaseTag: string,
@@ -56,14 +67,15 @@ function run(): void {
 	const manifestPath = path.join(BTST_CLI_PACKAGE_DIRECTORY, "package.json");
 	const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 	const plan = createBtstCliReleasePlan(releaseTag, manifest);
-	process.stdout.write(
-		[
-			`package_directory=${plan.packageDirectory}`,
-			`package_name=${plan.packageName}`,
-			`version=${plan.version}`,
-			`npm_tag=${plan.npmTag}`,
-		].join("\n") + "\n",
-	);
+	const output = formatBtstCliReleasePlan(plan);
+	const githubOutput = process.env.GITHUB_OUTPUT;
+
+	if (githubOutput) {
+		fs.appendFileSync(githubOutput, output);
+		return;
+	}
+
+	process.stdout.write(output);
 }
 
 if (
