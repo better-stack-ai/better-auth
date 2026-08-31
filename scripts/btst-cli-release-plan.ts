@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const BTST_CLI_PACKAGE_DIRECTORY = "packages/btst/cli";
 
@@ -64,7 +64,12 @@ function run(): void {
 	const releaseTag = process.argv[2];
 	if (!releaseTag)
 		throw new Error("Usage: btst-cli-release-plan <release-tag>");
-	const manifestPath = path.join(BTST_CLI_PACKAGE_DIRECTORY, "package.json");
+	const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
+	const manifestPath = path.join(
+		repositoryRoot,
+		BTST_CLI_PACKAGE_DIRECTORY,
+		"package.json",
+	);
 	const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 	const plan = createBtstCliReleasePlan(releaseTag, manifest);
 	const output = formatBtstCliReleasePlan(plan);

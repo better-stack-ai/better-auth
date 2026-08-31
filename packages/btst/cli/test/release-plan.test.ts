@@ -57,8 +57,11 @@ describe("createBtstCliReleasePlan", () => {
 			const stdout = execFileSync(
 				"pnpm",
 				[
+					"--filter",
+					"@btst/cli",
+					"exec",
 					"tsx",
-					resolve(repositoryRoot, "scripts/btst-cli-release-plan.ts"),
+					"../../../scripts/btst-cli-release-plan.ts",
 					"btst-cli-v2.2.4",
 				],
 				{
@@ -84,10 +87,10 @@ describe("createBtstCliReleasePlan", () => {
 				"utf8",
 			);
 			expect(workflow).toContain(
-				'run: pnpm tsx scripts/btst-cli-release-plan.ts "$RELEASE_TAG"',
+				'run: pnpm --filter @btst/cli exec tsx ../../../scripts/btst-cli-release-plan.ts "$RELEASE_TAG"',
 			);
 			expect(workflow).not.toContain(
-				'run: pnpm tsx scripts/btst-cli-release-plan.ts "$RELEASE_TAG" >> "$GITHUB_OUTPUT"',
+				'run: pnpm --filter @btst/cli exec tsx ../../../scripts/btst-cli-release-plan.ts "$RELEASE_TAG" >> "$GITHUB_OUTPUT"',
 			);
 		} finally {
 			rmSync(temporaryDirectory, { recursive: true, force: true });
