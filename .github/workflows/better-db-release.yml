@@ -183,7 +183,7 @@ jobs:
         id: release_plan
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
-        run: pnpm tsx scripts/btst-cli-release-plan.ts "$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+        run: pnpm tsx scripts/btst-cli-release-plan.ts "$RELEASE_TAG"
 
       - name: Build CLI and its dependencies
         run: pnpm turbo build --filter=@btst/cli...
