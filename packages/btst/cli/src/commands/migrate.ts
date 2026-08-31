@@ -26,7 +26,7 @@ async function migrateAction(options: MigrateOptions) {
 	logger.info("For Prisma: use `npx prisma migrate dev`");
 	logger.info("For Drizzle: use `npx drizzle-kit push`\n");
 
-	const cwd = options.cwd || process.cwd();
+	const cwd = path.resolve(options.cwd ?? process.cwd());
 	const schemaPath = path.resolve(cwd, options.config);
 	const outputPath = options.output ? path.resolve(cwd, options.output) : null;
 

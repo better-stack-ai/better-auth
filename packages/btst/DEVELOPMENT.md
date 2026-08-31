@@ -75,7 +75,9 @@ Only add what's necessary for the database-focused API. Everything else should b
 
 - `@btst/*@2.2.x` tracks `better-auth@1.6.16`
 - Minor `@btst` bump = minor `better-auth` bump (1.4→1.5 maps to 2.0→2.1)
-- Patch `@btst` bump = patch `better-auth` bump only
+- Patch `@btst` cohort bump = patch `better-auth` bump only. The standalone
+  `@btst/cli` may receive a CLI-only patch when database and adapter packages
+  are unchanged; use the dedicated release flow below.
 - Pin `better-auth`, `@better-auth/core`, and `@better-auth/utils` peers to the
   exact versions in the synced Better Auth release. Better Auth patch releases
   can change shared adapter types, so broad peer ranges can produce duplicate,

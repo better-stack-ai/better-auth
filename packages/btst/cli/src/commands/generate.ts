@@ -28,7 +28,7 @@ interface GenerateOptions {
 async function generateAction(options: GenerateOptions) {
 	logger.info("🔧 Better DB Generate");
 
-	const cwd = options.cwd || process.cwd();
+	const cwd = path.resolve(options.cwd ?? process.cwd());
 	const schemaPath = path.resolve(cwd, options.config);
 	const outputPath = path.resolve(cwd, options.output);
 

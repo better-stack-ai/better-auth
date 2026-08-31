@@ -136,13 +136,15 @@ export default defineDb({
 			projectDir,
 			orm === "prisma" ? "schema.prisma" : "schema.ts",
 		);
+		const cwdArgument =
+			orm === "drizzle" ? path.relative(process.cwd(), projectDir) : projectDir;
 		await execFileAsync(
 			process.execPath,
 			[
 				"./dist/index.mjs",
 				"generate",
 				"--cwd",
-				projectDir,
+				cwdArgument,
 				"--config",
 				"lib/stack.ts",
 				"--orm",
