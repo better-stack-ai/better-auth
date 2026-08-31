@@ -10,13 +10,12 @@ interface PackageManifest {
 	peerDependencies?: Record<string, string>;
 }
 
-const btstPackageDirectories = [
+const btstCohortPackageDirectories = [
 	"adapter-drizzle",
 	"adapter-kysely",
 	"adapter-memory",
 	"adapter-mongodb",
 	"adapter-prisma",
-	"cli",
 	"db",
 	"plugins",
 ] as const;
@@ -39,14 +38,20 @@ describe("BTST package dependency alignment", () => {
 	/**
 	 * @see https://github.com/better-stack-ai/better-stack/issues/163
 	 */
-	it("publishes one BTST patch version", async () => {
+	it("keeps the database cohort on one patch version", async () => {
 		const manifests = await Promise.all(
-			btstPackageDirectories.map(readManifest),
+			btstCohortPackageDirectories.map(readManifest),
 		);
 
 		for (const manifest of manifests) {
 			expect(manifest.version, manifest.name).toBe("2.2.3");
 		}
+	});
+
+	it("versions the independently released CLI separately", async () => {
+		const manifest = await readManifest("cli");
+
+		expect(manifest.version).toBe("2.2.4");
 	});
 
 	/**

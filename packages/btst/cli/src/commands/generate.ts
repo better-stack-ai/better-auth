@@ -11,6 +11,7 @@ import {
 } from "../generators";
 import { filterAuthTables } from "../utils/filter-auth-tables";
 import { logger } from "../utils/logger";
+import { importProjectModule } from "../utils/project-module";
 import { loadBetterDbSchema } from "../utils/schema-loader";
 import { createSpinner } from "../utils/spinner";
 
@@ -27,7 +28,7 @@ interface GenerateOptions {
 async function generateAction(options: GenerateOptions) {
 	logger.info("🔧 Better DB Generate");
 
-	const cwd = options.cwd || process.cwd();
+	const cwd = path.resolve(options.cwd ?? process.cwd());
 	const schemaPath = path.resolve(cwd, options.config);
 	const outputPath = path.resolve(cwd, options.output);
 
@@ -35,7 +36,7 @@ async function generateAction(options: GenerateOptions) {
 
 	try {
 		// 1. Load and validate schema
-		const dbSchema = await loadBetterDbSchema(schemaPath);
+		const dbSchema = await loadBetterDbSchema(schemaPath, cwd);
 
 		// 2. Get Better Auth schema format
 		const betterAuthSchema = dbSchema.getSchema();
@@ -47,7 +48,9 @@ async function generateAction(options: GenerateOptions) {
 		if (options.orm === "prisma") {
 			// Prisma generator needs adapter.id = "prisma" and provider
 			// Use dynamic import to avoid loading prisma adapter when not needed
-			const { prismaAdapter } = await import("better-auth/adapters/prisma");
+			const { prismaAdapter } = await importProjectModule<
+				typeof import("better-auth/adapters/prisma")
+			>("better-auth/adapters/prisma", cwd);
 			adapter = prismaAdapter(
 				{},
 				{ provider: "postgresql" },
@@ -55,7 +58,9 @@ async function generateAction(options: GenerateOptions) {
 		} else if (options.orm === "drizzle") {
 			// Drizzle generator needs adapter.id = "drizzle" and provider
 			// Use dynamic import to avoid loading drizzle adapter when not needed
-			const { drizzleAdapter } = await import("better-auth/adapters/drizzle");
+			const { drizzleAdapter } = await importProjectModule<
+				typeof import("better-auth/adapters/drizzle")
+			>("better-auth/adapters/drizzle", cwd);
 			adapter = drizzleAdapter(
 				{},
 				{ provider: "pg", schema: {} },

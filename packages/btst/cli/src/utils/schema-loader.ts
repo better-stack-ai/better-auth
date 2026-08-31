@@ -1,12 +1,66 @@
 import fs from "node:fs/promises";
+import path from "node:path";
+import type { BetterAuthDBSchema } from "@btst/db";
 import { createJiti } from "jiti";
 import { logger } from "./logger";
+import { loadProjectEnv } from "./project-env";
+
+interface BetterDbSchema {
+	getSchema(): BetterAuthDBSchema;
+}
+
+interface SchemaModule {
+	default?: BetterDbSchema;
+	dbSchema?: BetterDbSchema;
+	getSchema?: unknown;
+}
+
+interface ImportDeclarationPath {
+	node: { source: { value: string } };
+	remove(): void;
+}
+
+function stripServerOnlyImports() {
+	return {
+		visitor: {
+			ImportDeclaration(importPath: ImportDeclarationPath) {
+				if (importPath.node.source.value === "server-only") {
+					importPath.remove();
+				}
+			},
+		},
+	};
+}
+
+async function findProjectConfig(cwd: string): Promise<string | undefined> {
+	for (const fileName of ["tsconfig.json", "jsconfig.json"]) {
+		const candidate = path.join(cwd, fileName);
+		try {
+			await fs.access(candidate);
+			return candidate;
+		} catch {}
+	}
+	return undefined;
+}
+
+function getErrorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
+
+function isBetterDbSchema(value: unknown): value is BetterDbSchema {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		"getSchema" in value &&
+		typeof value.getSchema === "function"
+	);
+}
 
 /**
  * Loads and validates a btst schema file
  * Returns the schema object with getSchema method
  */
-export async function loadBetterDbSchema(schemaPath: string) {
+export async function loadBetterDbSchema(schemaPath: string, cwd: string) {
 	// 1. Validate schema file exists
 	try {
 		await fs.access(schemaPath);
@@ -16,28 +70,35 @@ export async function loadBetterDbSchema(schemaPath: string) {
 		process.exit(1);
 	}
 
-	// 2. Load schema with jiti (handles TypeScript)
-	const jiti = createJiti(import.meta.url, {
+	// 2. Match the consumer project's environment and module resolution.
+	loadProjectEnv(cwd);
+	const tsconfigPath = await findProjectConfig(cwd);
+	const jiti = createJiti(schemaPath, {
 		interopDefault: true,
+		tsconfigPaths: tsconfigPath,
+		transformOptions: {
+			babel: { plugins: [stripServerOnlyImports] },
+		},
 	});
 
-	let dbSchema: any;
+	let dbSchema: BetterDbSchema | undefined;
 	try {
-		const schemaModule = jiti(schemaPath);
+		const schemaModule = await jiti.import<SchemaModule>(schemaPath);
 
 		// Try multiple export patterns, checking for getSchema method:
 		// 1. Default export: export default defineDb(...)
 		// 2. Named export 'dbSchema': export { dbSchema }
 		// 3. Single export fallback: export const db = defineDb(...)
-		if (schemaModule.default?.getSchema) {
+		if (isBetterDbSchema(schemaModule.default)) {
 			dbSchema = schemaModule.default;
-		} else if (schemaModule.dbSchema?.getSchema) {
+		} else if (isBetterDbSchema(schemaModule.dbSchema)) {
 			dbSchema = schemaModule.dbSchema;
-		} else if (schemaModule.getSchema) {
+		} else if (isBetterDbSchema(schemaModule)) {
+			// Preserve the module receiver for schemas whose getSchema uses `this`.
 			dbSchema = schemaModule;
 		}
-	} catch (error: any) {
-		logger.error("Failed to load schema:", error.message);
+	} catch (error) {
+		logger.error("Failed to load schema:", getErrorMessage(error));
 		logger.info("\nTroubleshooting:");
 		logger.info("• Check for syntax errors in schema file");
 		logger.info("• Ensure file exports defineDb() result");

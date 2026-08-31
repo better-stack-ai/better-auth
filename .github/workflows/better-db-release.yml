@@ -6,9 +6,17 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Existing btst-v* tag to publish
+        description: Existing btst-v* or btst-cli-v* tag to publish
         required: true
         type: string
+      release_scope:
+        description: Publish the full cohort or @btst/cli only
+        required: true
+        default: cohort
+        type: choice
+        options:
+          - cohort
+          - cli
 
 permissions:
   id-token: write
@@ -18,7 +26,9 @@ jobs:
   release:
     runs-on: ubuntu-latest
     # Only run on fork, not on upstream better-auth repo
-    if: github.repository != 'better-auth/better-auth'
+    if: >-
+      github.repository != 'better-auth/better-auth' &&
+      (github.event_name == 'release' || inputs.release_scope == 'cohort')
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
@@ -142,5 +152,85 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: npm-debug-logs
+          path: /home/runner/.npm/_logs/
+          retention-days: 7
+
+  release-cli:
+    runs-on: ubuntu-latest
+    if: >-
+      github.repository != 'better-auth/better-auth' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.release_scope == 'cli'
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.22.1
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install npm with trusted publishing support
+        run: npm install -g npm@11.17.0
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Validate CLI-only release plan
+        id: release_plan
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: pnpm tsx scripts/btst-cli-release-plan.ts "$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Build CLI and its dependencies
+        run: pnpm turbo build --filter=@btst/cli...
+
+      - name: Prepare and verify CLI package
+        env:
+          PACKAGE_DIRECTORY: ${{ steps.release_plan.outputs.package_directory }}
+          PACKAGE_NAME: ${{ steps.release_plan.outputs.package_name }}
+          PACKAGE_VERSION: ${{ steps.release_plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          test "$PACKAGE_DIRECTORY" = "packages/btst/cli"
+          test "$PACKAGE_NAME" = "@btst/cli"
+          test "$(node -p "require('./$PACKAGE_DIRECTORY/package.json').name")" = "$PACKAGE_NAME"
+          test "$(node -p "require('./$PACKAGE_DIRECTORY/package.json').version")" = "$PACKAGE_VERSION"
+          cp packages/btst/README.md "$PACKAGE_DIRECTORY/README.md"
+          cd "$PACKAGE_DIRECTORY"
+          npm pack --dry-run
+
+      - name: Publish @btst/cli to npm
+        env:
+          NPM_TAG: ${{ steps.release_plan.outputs.npm_tag }}
+          PACKAGE_DIRECTORY: ${{ steps.release_plan.outputs.package_directory }}
+          PACKAGE_NAME: ${{ steps.release_plan.outputs.package_name }}
+          PACKAGE_VERSION: ${{ steps.release_plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          test "$PACKAGE_DIRECTORY" = "packages/btst/cli"
+          test "$PACKAGE_NAME" = "@btst/cli"
+          mkdir -p "$RUNNER_TEMP/btst-cli-package"
+          PACKAGE_TARBALL=$(pnpm --dir "$PACKAGE_DIRECTORY" pack --json --pack-destination "$RUNNER_TEMP/btst-cli-package" | node -e 'let input = ""; process.stdin.on("data", (chunk) => input += chunk); process.stdin.on("end", () => process.stdout.write(JSON.parse(input).filename))')
+          test "$(tar -xOf "$PACKAGE_TARBALL" package/package.json | node -e 'let input = ""; process.stdin.on("data", (chunk) => input += chunk); process.stdin.on("end", () => process.stdout.write(JSON.parse(input).name))')" = "$PACKAGE_NAME"
+          test "$(tar -xOf "$PACKAGE_TARBALL" package/package.json | node -e 'let input = ""; process.stdin.on("data", (chunk) => input += chunk); process.stdin.on("end", () => process.stdout.write(JSON.parse(input).version))')" = "$PACKAGE_VERSION"
+          if tar -xOf "$PACKAGE_TARBALL" package/package.json | grep -q 'workspace:'; then
+            echo "$PACKAGE_NAME@$PACKAGE_VERSION tarball contains an unresolved workspace dependency"
+            exit 1
+          fi
+          if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version >/dev/null 2>&1; then
+            echo "$PACKAGE_NAME@$PACKAGE_VERSION is already published; skipping."
+          else
+            npm publish "$PACKAGE_TARBALL" --access public --provenance --tag "$NPM_TAG"
+          fi
+
+      - name: Upload npm logs on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: npm-debug-logs-cli
           path: /home/runner/.npm/_logs/
           retention-days: 7

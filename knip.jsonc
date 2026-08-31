@@ -10,10 +10,13 @@
 		"packages/better-auth/src/client/test-plugin.ts",
 		// CI scripts used by GitHub Actions workflows, not by packages
 		".github/scripts/**",
+		"scripts/btst-cli-release-plan.ts",
 		// dev script run directly, not imported by any package
 		"scripts/sync-upstream.ts",
 		// test snapshot fixtures — imported by test files, invisible to --production
 		"packages/btst/cli/test/__snapshots__/**",
+		// copied as a project directory by e2e-cli.test.ts, not imported statically
+		"packages/btst/cli/test/fixtures/next-project/**",
 		"packages/btst/db/test/example-schema.ts",
 		// .js test file not matched by vitest ts entry pattern
 		"packages/btst/adapter-memory/test/create-adapter.test.js"
