@@ -272,6 +272,24 @@ The `better-db-release.yml` workflow automatically:
 - `btst-v2.1.0-beta.1` → `beta`
 - Supported: `alpha`, `beta`, `rc`, `canary`, `next`
 
+### CLI-only Patch Release
+
+When only `@btst/cli` changes, leave the database, plugin, and adapter package
+versions unchanged. Tag the CLI version with the dedicated prefix, then dispatch
+the existing trusted-publishing workflow with the `cli` scope:
+
+```bash
+git tag btst-cli-v2.2.4
+git push origin btst-cli-v2.2.4
+gh workflow run better-db-release.yml \
+  -f release_tag=btst-cli-v2.2.4 \
+  -f release_scope=cli
+```
+
+The CLI release plan rejects the cohort `btst-v*` prefix and any manifest other
+than `@btst/cli`. The workflow builds dependencies as needed but packs and
+publishes only `packages/btst/cli`.
+
 ### Manual Release
 
 ```bash
@@ -289,7 +307,8 @@ cd packages/btst/adapter-prisma && pnpm publish --access public --tag latest
 
 ### Pre-Release Checklist
 
-- [ ] All `@btst` package versions bumped consistently
+- [ ] For cohort releases, all `@btst` package versions bumped consistently
+- [ ] For CLI-only releases, only `@btst/cli` version bumped
 - [ ] `peerDependencies` version ranges updated
 - [ ] `pnpm turbo build --filter="./packages/btst/*"` succeeds with no errors
 - [ ] Local tests pass (`pnpm turbo test --filter="./packages/btst/*"`)

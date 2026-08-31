@@ -34,7 +34,7 @@ async function migrateAction(options: MigrateOptions) {
 
 	try {
 		// 1. Load and validate schema
-		const dbSchema = await loadBetterDbSchema(schemaPath);
+		const dbSchema = await loadBetterDbSchema(schemaPath, cwd);
 
 		// 2. Get Better Auth schema format
 		const betterAuthSchema = dbSchema.getSchema();

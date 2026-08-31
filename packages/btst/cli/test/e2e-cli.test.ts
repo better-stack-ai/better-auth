@@ -1,10 +1,15 @@
-import { exec } from "node:child_process";
+import { exec, execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+const nextProjectFixture = fileURLToPath(
+	new URL("./fixtures/next-project", import.meta.url),
+);
 
 /**
  * E2E tests that actually run the CLI command
@@ -99,6 +104,64 @@ export default defineDb({
 		expect(content).toContain('from "drizzle-orm/');
 		expect(content).toContain("export const article");
 	}, 10000);
+
+	/**
+	 * @see https://github.com/better-stack-ai/better-stack/issues/246
+	 */
+	it.each([
+		"prisma",
+		"drizzle",
+	] as const)("should load a real Next.js project config for %s generation", async (orm) => {
+		const projectDir = path.join(testDir, `next-${orm}`);
+		await fs.cp(nextProjectFixture, projectDir, { recursive: true });
+		await fs.copyFile(
+			path.join(projectDir, ".env.fixture"),
+			path.join(projectDir, ".env"),
+		);
+
+		const serverOnlyDir = path.join(projectDir, "node_modules/server-only");
+		await fs.mkdir(serverOnlyDir, { recursive: true });
+		await fs.writeFile(
+			path.join(serverOnlyDir, "index.js"),
+			'throw new Error("server-only marker executed outside Next.js");\n',
+			"utf8",
+		);
+		await fs.writeFile(
+			path.join(serverOnlyDir, "package.json"),
+			'{"name":"server-only","main":"index.js"}\n',
+			"utf8",
+		);
+
+		const outputPath = path.join(
+			projectDir,
+			orm === "prisma" ? "schema.prisma" : "schema.ts",
+		);
+		await execFileAsync(
+			process.execPath,
+			[
+				"./dist/index.mjs",
+				"generate",
+				"--cwd",
+				projectDir,
+				"--config",
+				"lib/stack.ts",
+				"--orm",
+				orm,
+				"--output",
+				outputPath,
+				"--yes",
+			],
+			{
+				cwd: process.cwd(),
+				env: { ...process.env, BTST_FIXTURE_MODEL: undefined },
+			},
+		);
+
+		const content = await fs.readFile(outputPath, "utf8");
+		expect(content).toContain(
+			orm === "prisma" ? "model ProjectWidget" : "const projectWidget",
+		);
+	}, 15000);
 
 	it("should support named export 'dbSchema' pattern", async () => {
 		await fs.mkdir(testDir, { recursive: true });
