@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
     types:
       - opened
@@ -159,6 +160,10 @@ jobs:
       - uses: better-auth/shared-workflows/.github/actions/setup-pnpm@08e5520e7a829b03bee1152913682b67d2ba44b1
         with:
           node-version: ${{ matrix.node-version }}
+
+      - name: Fetch upstream release fixtures
+        if: matrix.node-version == '24.x'
+        run: git fetch --no-tags https://github.com/better-auth/better-auth.git 'refs/tags/v*:refs/tags/v*'
 
       - name: Test release tooling
         if: matrix.node-version == '24.x'
