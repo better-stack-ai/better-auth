@@ -65,6 +65,9 @@ async function migrateAction(options: MigrateOptions) {
 		spinner.start();
 		let toBeAdded: any[];
 		let toBeCreated: any[];
+		let toBeAddedIndexes: Awaited<
+			ReturnType<typeof getMigrations>
+		>["toBeAddedIndexes"];
 		let runMigrations: () => Promise<void>;
 		let compileMigrations: () => Promise<string>;
 
@@ -72,6 +75,7 @@ async function migrateAction(options: MigrateOptions) {
 			const migrations = await getMigrations(auth.options);
 			toBeAdded = migrations.toBeAdded;
 			toBeCreated = migrations.toBeCreated;
+			toBeAddedIndexes = migrations.toBeAddedIndexes;
 			runMigrations = migrations.runMigrations;
 			compileMigrations = migrations.compileMigrations;
 			spinner.stop();
@@ -93,13 +97,20 @@ async function migrateAction(options: MigrateOptions) {
 			toBeAdded = toBeAdded.filter(
 				(c) => !DEFAULT_AUTH_TABLES.includes(c.table.toLowerCase()),
 			);
+			toBeAddedIndexes = toBeAddedIndexes.filter(
+				(index) => !DEFAULT_AUTH_TABLES.includes(index.table.toLowerCase()),
+			);
 			console.log(
 				"🧹 Filtered out Better Auth default tables (user, session, etc.)",
 			);
 		}
 
 		// 8. Show pending migrations
-		if (toBeCreated.length === 0 && toBeAdded.length === 0) {
+		if (
+			toBeCreated.length === 0 &&
+			toBeAdded.length === 0 &&
+			toBeAddedIndexes.length === 0
+		) {
 			console.log("✓ Database is up to date.");
 			return;
 		}
@@ -112,6 +123,13 @@ async function migrateAction(options: MigrateOptions) {
 		if (toBeAdded.length > 0) {
 			console.log(`  Columns to add: ${toBeAdded.length}`);
 			toBeAdded.forEach((c) => console.log(`    - ${c.table}.${c.column}`));
+		}
+
+		if (toBeAddedIndexes.length > 0) {
+			console.log(`  Indexes to add: ${toBeAddedIndexes.length}`);
+			toBeAddedIndexes.forEach((index) =>
+				console.log(`    - ${index.table}.${index.name}`),
+			);
 		}
 
 		// 9. If output is specified, generate SQL file instead of running

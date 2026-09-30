@@ -24,6 +24,48 @@ describe("E2E CLI tests", () => {
 		await fs.rm(testDir, { recursive: true, force: true });
 	});
 
+	/** @see https://github.com/better-stack-ai/better-auth/pull/51 */
+	it("generates pending custom indexes when tables and columns already exist", async () => {
+		await fs.mkdir(testDir, { recursive: true });
+		await fs.writeFile(
+			testSchema,
+			`
+import { defineDb } from "@btst/db";
+export default defineDb({
+  product: {
+    modelName: "product",
+    fields: { name: { type: "string", required: true } },
+    indexes: [{ fields: ["name"] }],
+  },
+});
+`,
+		);
+		const databasePath = path.join(testDir, "indexes.sqlite");
+		const Database = (await import("better-sqlite3")).default;
+		const database = new Database(databasePath);
+		database.exec(
+			"CREATE TABLE product (id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL)",
+		);
+		database.close();
+		const outputPath = path.join(testDir, "indexes.sql");
+
+		await execFileAsync(process.execPath, [
+			"./dist/index.mjs",
+			"migrate",
+			"--config",
+			testSchema,
+			"--output",
+			outputPath,
+			"--database-url",
+			`sqlite:${databasePath}`,
+			"--yes",
+		]);
+
+		const sql = await fs.readFile(outputPath, "utf8");
+		expect(sql).toMatch(/create index .+ on "product" \("name"\)/i);
+		expect(sql).not.toContain("create table");
+	});
+
 	it("should run generate command for Prisma", async () => {
 		// Create test directory and schema
 		await fs.mkdir(testDir, { recursive: true });
