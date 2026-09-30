@@ -94,11 +94,11 @@ async function generateAction(options: GenerateOptions) {
 			adapter = null;
 		}
 
-		// 4. Create options with schema and experimental joins enabled
+		// 4. Create options with schema and database joins enabled
 		const generatorOptions = {
 			database: adapter,
-			experimental: {
-				joins: true, // Enable experimental joins for relationship generation
+			advanced: {
+				database: { joins: true },
 			},
 			plugins: [
 				{
@@ -143,6 +143,19 @@ async function generateAction(options: GenerateOptions) {
 			logger.error("Generation failed:", error.message);
 			logger.error(error.stack);
 			process.exit(1);
+		}
+
+		if (result?.schemaProblems?.length) {
+			logger.warn(
+				"Required columns reject inserts. Fix these columns manually:",
+			);
+			for (const problem of result.schemaProblems) logger.warn(problem);
+		}
+		if (result?.unsafeChanges?.length) {
+			logger.warn(
+				"Unsafe schema changes. Fix these columns before running the generated script:",
+			);
+			for (const change of result.unsafeChanges) logger.warn(change);
 		}
 
 		// 6. Handle output

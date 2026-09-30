@@ -1,6 +1,6 @@
 {
   "name": "@btst/adapter-memory",
-  "version": "2.2.3",
+  "version": "3.0.0",
   "description": "In-memory adapter for btst",
   "type": "module",
   "license": "MIT",
@@ -44,9 +44,9 @@
     "@btst/db": "workspace:*"
   },
   "peerDependencies": {
-    "better-auth": "1.6.16",
-    "@better-auth/core": "1.6.16",
-    "@better-auth/utils": "0.4.1"
+    "better-auth": "1.7.6",
+    "@better-auth/core": "1.7.6",
+    "@better-auth/utils": "0.4.2"
   },
   "devDependencies": {
     "better-auth": "workspace:*",

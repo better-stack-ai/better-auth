@@ -75,14 +75,19 @@ const COPY_CONFIGS: CopyConfig[] = [
 	{
 		from: "packages/drizzle-adapter/src",
 		to: "packages/btst/adapter-drizzle/src",
-		files: ["drizzle-adapter.ts", "query-builders.ts"],
+		files: [
+			"drizzle-adapter.ts",
+			"query-builders.ts",
+			"join-relation-key.ts",
+			"schema-check.ts",
+		],
 	},
 
 	// Prisma Adapter - vendored from the standalone @better-auth/prisma-adapter package.
 	{
 		from: "packages/prisma-adapter/src",
 		to: "packages/btst/adapter-prisma/src",
-		files: ["prisma-adapter.ts"],
+		files: ["prisma-adapter.ts", "schema-check.ts"],
 	},
 
 	// Memory Adapter - vendored from the standalone @better-auth/memory-adapter package.
@@ -113,20 +118,16 @@ const COPY_CONFIGS: CopyConfig[] = [
 			"d1-sqlite-dialect.ts",
 			"node-sqlite-dialect.ts",
 			"kysely-migration-tables.ts",
+			"schema-check.ts",
+			"sqlite-introspector.ts",
 		],
 		transformImports: (content: string) => {
 			// Map @better-auth/core subpath imports to their published equivalents.
 			// Note: @better-auth/core/utils/string (v1.5.4+) replaces the old /utils path.
-			return content
-				.replace(/from ["']@better-auth\/core["']/g, 'from "better-auth/types"')
-				.replace(
-					/from ["']@better-auth\/core\/db\/adapter["']/g,
-					'from "better-auth/adapters"',
-				)
-				.replace(
-					/import\s*\{\s*capitalizeFirstLetter\s*\}\s*from\s*["']@better-auth\/core\/utils(?:\/string)?["'];?/g,
-					'import { capitalizeFirstLetter } from "./utils/string";',
-				);
+			return content.replace(
+				/import\s*\{\s*capitalizeFirstLetter\s*\}\s*from\s*["']@better-auth\/core\/utils(?:\/string)?["'];?/g,
+				'import { capitalizeFirstLetter } from "./utils/string";',
+			);
 		},
 	},
 

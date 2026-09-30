@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Grid } from "@/components/blocks/features";
+import { Grid } from "@/components/docs/features";
 import { Button } from "@/components/ui/button";
 
 export function EnterpriseForm() {

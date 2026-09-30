@@ -73,7 +73,7 @@ Only add what's necessary for the database-focused API. Everything else should b
 
 ### 3. Version Alignment
 
-- `@btst/*@2.2.x` tracks `better-auth@1.6.16`
+- `@btst/*@3.0.0` tracks `better-auth@1.7.6` (see [migration guide](MIGRATION-3.md))
 - Minor `@btst` bump = minor `better-auth` bump (1.4→1.5 maps to 2.0→2.1)
 - Patch `@btst` cohort bump = patch `better-auth` bump only. The standalone
   `@btst/cli` may receive a CLI-only patch when database and adapter packages

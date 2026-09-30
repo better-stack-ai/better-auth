@@ -12,7 +12,7 @@
  * Any manual changes will be overwritten.
  */
 
-import { logger } from "@better-auth/core/env";
+import type { BetterAuthOptions } from "@better-auth/core";
 import type {
 	AdapterFactoryCustomizeAdapterCreator,
 	AdapterFactoryOptions,
@@ -20,9 +20,15 @@ import type {
 	DBAdapterDebugLogOption,
 	JoinConfig,
 	Where,
-} from "better-auth/adapters";
-import { createAdapterFactory } from "better-auth/adapters";
-import type { BetterAuthOptions } from "better-auth/types";
+} from "@better-auth/core/db/adapter";
+import { createAdapterFactory } from "@better-auth/core/db/adapter";
+import {
+	checksSchema,
+	createSchemaCheck,
+	getExpectedSchema,
+	registerSchemaCheck,
+} from "@better-auth/core/db/internal";
+import { logger } from "@better-auth/core/env";
 import type {
 	InsertQueryBuilder,
 	Kysely,
@@ -37,12 +43,26 @@ import {
 	insensitiveNe,
 	insensitiveNotIn,
 } from "./query-builders";
+import { findSchemaProblems } from "./schema-check";
 import type { KyselyDatabaseType } from "./types";
 import { capitalizeFirstLetter } from "./utils/string";
 
 interface KyselyAdapterConfig {
 	/**
 	 * Database type.
+	 *
+	 * For `"mysql"`, this adapter depends on the driver returning
+	 * "rows matched" counts from `UPDATE`/`DELETE` operations (in
+	 * mysql2: `affectedRows`, exposed by Kysely as `numUpdatedRows`).
+	 * By default, `mysql2` enables this via the `FOUND_ROWS` client
+	 * flag.
+	 *
+	 * Do not disable this flag. If you remove it (e.g. with
+	 * `flags: '-FOUND_ROWS'` in your pool config), MySQL will report
+	 * "rows changed" semantics: an idempotent `UPDATE` (where the new
+	 * value equals the old value) will show zero affected rows, causing
+	 * adapter methods like `update`, `incrementOne`, or `updateMany` to
+	 * return `null` or `0` even if a row matched the predicate.
 	 */
 	type?: KyselyDatabaseType | undefined;
 	/**
@@ -108,8 +128,10 @@ export const kyselyAdapter = (
 					fieldName: string;
 				}[] = [];
 				if (join) {
-					for (const [joinModel, _] of Object.entries(join)) {
-						const fields = schema[getDefaultModelName(joinModel)]?.fields;
+					for (const [joinModel, joinConfig] of Object.entries(join)) {
+						const fields =
+							schema[joinConfig.modelKey ?? getDefaultModelName(joinModel)]
+								?.fields;
 						const [_joinModelSchema, joinModelName] = joinModel.includes(".")
 							? joinModel.split(".")
 							: [undefined, joinModel];
@@ -137,32 +159,75 @@ export const kyselyAdapter = (
 					| InsertQueryBuilder<any, any, any>
 					| UpdateQueryBuilder<any, string, string, any>,
 				model: string,
+				modelKey: string,
 				where: Where[],
 			) => {
 				if (config?.type === "mysql") {
-					await builder.execute();
-
-					// Updates: re-query by the where clause field
+					// MySQL has no `UPDATE ... RETURNING`. Execute the update
+					// first, then re-select only after the row count confirms
+					// that the predicate matched. This keeps guarded updates
+					// from reporting success after zero rows matched.
+					//
+					// The gate assumes "rows matched" semantics in
+					// `numUpdatedRows` (mysql2 default via `CLIENT_FOUND_ROWS`).
+					// See `KyselyAdapterConfig.type` JSDoc. Disabling that
+					// flag swaps to "rows changed" and surfaces idempotent
+					// updates as null.
 					if (where.length > 0) {
-						const field = values.id
-							? "id"
-							: where[0]?.field
-								? where[0].field
-								: "id";
-						const value =
-							values[field] !== undefined ? values[field] : where[0]?.value;
+						type Builder = UpdateQueryBuilder<any, string, string, any>;
+						const updateResult = await (builder as Builder).executeTakeFirst();
+						if (
+							!updateResult ||
+							Number(updateResult.numUpdatedRows ?? 0) === 0
+						) {
+							return null;
+						}
+
+						// The row count proves a match, not which row to return.
+						// Prefer a safe id equality from the update or guard
+						// before falling back to the first predicate.
+						//
+						// `incrementOne` remains the portable primitive for
+						// race-safe guarded state transitions.
+						const idEqualityWhere = where.find(
+							(w) =>
+								w.field === "id" &&
+								(w.operator === undefined || w.operator === "eq") &&
+								w.connector !== "OR" &&
+								w.value !== undefined &&
+								w.value !== null,
+						);
+						let reselectField: string;
+						let reselectValue: Where["value"];
+						if (values.id !== undefined && values.id !== null) {
+							reselectField = "id";
+							reselectValue = values.id;
+						} else if (idEqualityWhere) {
+							reselectField = "id";
+							reselectValue = idEqualityWhere.value;
+						} else if (where[0]?.field) {
+							reselectField = where[0].field;
+							reselectValue =
+								values[reselectField] !== undefined
+									? values[reselectField]
+									: where[0].value;
+						} else {
+							return null;
+						}
+
 						return await db
 							.selectFrom(model)
 							.selectAll()
 							.where(
-								getFieldName({ model, field }),
-								value === null ? "is" : "=",
-								value,
+								getFieldName({ model: modelKey, field: reselectField }),
+								reselectValue === null ? "is" : "=",
+								reselectValue,
 							)
 							.limit(1)
 							.executeTakeFirst();
 					}
 
+					await builder.execute();
 					// Inserts: cascading strategy inside a transaction
 					const fetchInserted = async (trx: any) => {
 						// 1. Known id from the data
@@ -170,7 +235,11 @@ export const kyselyAdapter = (
 							return await trx
 								.selectFrom(model)
 								.selectAll()
-								.where(getFieldName({ model, field: "id" }), "=", values.id)
+								.where(
+									getFieldName({ model: modelKey, field: "id" }),
+									"=",
+									values.id,
+								)
 								.limit(1)
 								.executeTakeFirst();
 						}
@@ -184,20 +253,23 @@ export const kyselyAdapter = (
 								return await trx
 									.selectFrom(model)
 									.selectAll()
-									.where(getFieldName({ model, field: "id" }), "=", lastId)
+									.where(
+										getFieldName({ model: modelKey, field: "id" }),
+										"=",
+										lastId,
+									)
 									.limit(1)
 									.executeTakeFirst();
 							}
 						}
 
 						// 3. Unique column lookup via Better Auth schema
-						const defaultModel = getDefaultModelName(model);
-						const modelSchema = schema[defaultModel]?.fields;
+						const modelSchema = schema[modelKey]?.fields;
 						if (modelSchema) {
 							for (const [fieldKey, fieldAttr] of Object.entries(modelSchema)) {
 								if (!fieldAttr.unique) continue;
 								const dbFieldName = getFieldName({
-									model,
+									model: modelKey,
 									field: fieldKey,
 								});
 								const val = values[dbFieldName];
@@ -241,7 +313,11 @@ export const kyselyAdapter = (
 				}
 				return await builder.returningAll().executeTakeFirst();
 			};
-			function convertWhereClause(model: string, w?: Where[] | undefined) {
+			function convertWhereClause(
+				model: string,
+				modelKey: string,
+				w?: Where[] | undefined,
+			) {
 				if (!w)
 					return {
 						and: null,
@@ -263,7 +339,7 @@ export const kyselyAdapter = (
 					} = condition;
 					const value: any = _value;
 					const field: string | any = getFieldName({
-						model,
+						model: modelKey,
 						field: _field,
 					});
 
@@ -391,7 +467,7 @@ export const kyselyAdapter = (
 
 					// Initialize joined model fields map
 					for (const [joinModel] of Object.entries(joinConfig)) {
-						joinedModelFields[getModelName(joinModel)] = {};
+						joinedModelFields[joinModel] = {};
 					}
 
 					// Distribute all columns - collect complete objects per model
@@ -412,9 +488,9 @@ export const kyselyAdapter = (
 								keyStr ===
 									`_Joined${capitalizeFirstLetter(joinModelRef)}${capitalizeFirstLetter(fieldName)}`
 							) {
-								joinedModelFields[getModelName(joinModel)]![
+								joinedModelFields[joinModel]![
 									getFieldName({
-										model: joinModel,
+										model: joinConfig[joinModel]?.modelKey ?? joinModel,
 										field: fieldName,
 									})
 								] = value;
@@ -437,8 +513,7 @@ export const kyselyAdapter = (
 
 						// Initialize joined models based on uniqueness
 						for (const [joinModel, joinAttr] of Object.entries(joinConfig)) {
-							entry[getModelName(joinModel)] =
-								joinAttr.relation === "one-to-one" ? null : [];
+							entry[joinModel] = joinAttr.relation === "one-to-one" ? null : [];
 						}
 
 						groupedByMainId.set(mainId, entry);
@@ -451,7 +526,7 @@ export const kyselyAdapter = (
 						const isUnique = joinAttr.relation === "one-to-one";
 						const limit = joinAttr.limit ?? 100;
 
-						const joinedObj = joinedModelFields[getModelName(joinModel)];
+						const joinedObj = joinedModelFields[joinModel];
 
 						const hasData =
 							joinedObj &&
@@ -461,10 +536,10 @@ export const kyselyAdapter = (
 							);
 
 						if (isUnique) {
-							entry[getModelName(joinModel)] = hasData ? joinedObj : null;
+							entry[joinModel] = hasData ? joinedObj : null;
 						} else {
 							// For arrays, append if not already there (deduplicate by id) and respect limit
-							const joinModelName = getModelName(joinModel);
+							const joinModelName = joinModel;
 							if (Array.isArray(entry[joinModelName]) && hasData) {
 								// Check if we've reached the limit before processing
 								if (entry[joinModelName].length >= limit) {
@@ -473,7 +548,7 @@ export const kyselyAdapter = (
 
 								// Get the id field name using getFieldName to ensure correct transformation
 								const idFieldName = getFieldName({
-									model: joinModel,
+									model: joinAttr.modelKey ?? joinModel,
 									field: "id",
 								});
 								const joinedId = joinedObj[idFieldName];
@@ -503,7 +578,7 @@ export const kyselyAdapter = (
 				for (const entry of result) {
 					for (const [joinModel, joinAttr] of Object.entries(joinConfig)) {
 						if (joinAttr.relation !== "one-to-one") {
-							const joinModelName = getModelName(joinModel);
+							const joinModelName = joinModel;
 							if (Array.isArray(entry[joinModelName])) {
 								const limit = joinAttr.limit ?? 100;
 								if (entry[joinModelName].length > limit) {
@@ -518,13 +593,19 @@ export const kyselyAdapter = (
 			}
 
 			return {
-				async create({ data, model }) {
+				async create({ data, model, modelKey = model }) {
 					const builder = db.insertInto(model).values(data);
-					const returned = await withReturning(data, builder, model, []);
+					const returned = await withReturning(
+						data,
+						builder,
+						model,
+						modelKey,
+						[],
+					);
 					return returned;
 				},
-				async findOne({ model, where, select, join }) {
-					const { and, or } = convertWhereClause(model, where);
+				async findOne({ model, modelKey = model, where, select, join }) {
+					const { and, or } = convertWhereClause(model, modelKey, where);
 					let query: any = db
 						.selectFrom((eb) => {
 							let b = eb.selectFrom(model);
@@ -540,7 +621,9 @@ export const kyselyAdapter = (
 							}
 							if (select?.length && select.length > 0) {
 								b = b.select(
-									select.map((field) => getFieldName({ model, field })),
+									select.map((field) =>
+										getFieldName({ model: modelKey, field }),
+									),
 								);
 							} else {
 								b = b.selectAll();
@@ -588,8 +671,17 @@ export const kyselyAdapter = (
 
 					return row as any;
 				},
-				async findMany({ model, where, limit, select, offset, sortBy, join }) {
-					const { and, or } = convertWhereClause(model, where);
+				async findMany({
+					model,
+					modelKey = model,
+					where,
+					limit,
+					select,
+					offset,
+					sortBy,
+					join,
+				}) {
+					const { and, or } = convertWhereClause(model, modelKey, where);
 					let query: any = db
 						.selectFrom((eb) => {
 							let b = eb.selectFrom(model);
@@ -597,7 +689,9 @@ export const kyselyAdapter = (
 							if (config?.type === "mssql") {
 								if (offset !== undefined) {
 									if (!sortBy) {
-										b = b.orderBy(getFieldName({ model, field: "id" }));
+										b = b.orderBy(
+											getFieldName({ model: modelKey, field: "id" }),
+										);
 									}
 									b = b.offset(offset).fetch(limit || 100);
 								} else if (limit !== undefined) {
@@ -614,7 +708,7 @@ export const kyselyAdapter = (
 
 							if (sortBy?.field) {
 								b = b.orderBy(
-									`${getFieldName({ model, field: sortBy.field })}`,
+									`${getFieldName({ model: modelKey, field: sortBy.field })}`,
 									sortBy.direction,
 								);
 							}
@@ -633,7 +727,9 @@ export const kyselyAdapter = (
 
 							if (select?.length && select.length > 0) {
 								b = b.select(
-									select.map((field) => getFieldName({ model, field })),
+									select.map((field) =>
+										getFieldName({ model: modelKey, field }),
+									),
 								);
 							} else {
 								b = b.selectAll();
@@ -668,7 +764,7 @@ export const kyselyAdapter = (
 
 					if (sortBy?.field) {
 						query = query.orderBy(
-							`${getFieldName({ model, field: sortBy.field })}`,
+							`${getFieldName({ model: modelKey, field: sortBy.field })}`,
 							sortBy.direction,
 						);
 					}
@@ -679,8 +775,16 @@ export const kyselyAdapter = (
 					if (join) return processJoinedResults(res, join, allSelectsStr);
 					return res;
 				},
-				async update({ model, where, update: values }) {
-					const { and, or } = convertWhereClause(model, where);
+				async update({ model, modelKey = model, where, update: values }) {
+					// `update` is the single-row variant; an empty `where`
+					// would otherwise compile to `UPDATE table SET ...` with
+					// no predicate and mutate every row in the table. Treat
+					// it as an invalid call and return null on every dialect.
+					// Use `updateMany` if a bulk update is actually intended.
+					if (where.length === 0) {
+						return null;
+					}
+					const { and, or } = convertWhereClause(model, modelKey, where);
 
 					let query = db.updateTable(model).set(values as any);
 					if (and) {
@@ -689,10 +793,16 @@ export const kyselyAdapter = (
 					if (or) {
 						query = query.where((eb) => eb.or(or.map((expr) => expr(eb))));
 					}
-					return await withReturning(values as any, query, model, where);
+					return await withReturning(
+						values as any,
+						query,
+						model,
+						modelKey,
+						where,
+					);
 				},
-				async updateMany({ model, where, update: values }) {
-					const { and, or } = convertWhereClause(model, where);
+				async updateMany({ model, modelKey = model, where, update: values }) {
+					const { and, or } = convertWhereClause(model, modelKey, where);
 					let query = db.updateTable(model).set(values as any);
 					if (and) {
 						query = query.where((eb) => eb.and(and.map((expr) => expr(eb))));
@@ -705,8 +815,8 @@ export const kyselyAdapter = (
 						? Number.MAX_SAFE_INTEGER
 						: Number(res);
 				},
-				async count({ model, where }) {
-					const { and, or } = convertWhereClause(model, where);
+				async count({ model, modelKey = model, where }) {
+					const { and, or } = convertWhereClause(model, modelKey, where);
 					let query = db
 						.selectFrom(model)
 						// a temporal solution for counting other than "*" - see more - https://www.sqlite.org/quirks.html#double_quoted_string_literals_are_accepted
@@ -726,8 +836,8 @@ export const kyselyAdapter = (
 					}
 					return parseInt(res[0]!.count);
 				},
-				async delete({ model, where }) {
-					const { and, or } = convertWhereClause(model, where);
+				async delete({ model, modelKey = model, where }) {
+					const { and, or } = convertWhereClause(model, modelKey, where);
 					let query = db.deleteFrom(model);
 					if (and) {
 						query = query.where((eb) => eb.and(and.map((expr) => expr(eb))));
@@ -738,8 +848,8 @@ export const kyselyAdapter = (
 					}
 					await query.execute();
 				},
-				async deleteMany({ model, where }) {
-					const { and, or } = convertWhereClause(model, where);
+				async deleteMany({ model, modelKey = model, where }) {
+					const { and, or } = convertWhereClause(model, modelKey, where);
 					let query = db.deleteFrom(model);
 					if (and) {
 						query = query.where((eb) => eb.and(and.map((expr) => expr(eb))));
@@ -752,8 +862,8 @@ export const kyselyAdapter = (
 						? Number.MAX_SAFE_INTEGER
 						: Number(res);
 				},
-				async consumeOne({ model, where }) {
-					const { and, or } = convertWhereClause(model, where);
+				async consumeOne({ model, modelKey = model, where }) {
+					const { and, or } = convertWhereClause(model, modelKey, where);
 					const applyWhere = (query: any) => {
 						if (and) {
 							query = query.where((eb: any) =>
@@ -767,7 +877,7 @@ export const kyselyAdapter = (
 						}
 						return query;
 					};
-					const idField = getFieldName({ model, field: "id" });
+					const idField = getFieldName({ model: modelKey, field: "id" });
 					const deleteSelectedRow = async (db: any, row: any) => {
 						const targetId = row[idField] ?? row.id;
 						if (targetId === undefined || targetId === null) {
@@ -819,13 +929,101 @@ export const kyselyAdapter = (
 							: db.transaction().execute(claimFromTransaction);
 					}
 
-					const targetIds = applyWhere(
+					const selectIds = applyWhere(
 						db.selectFrom(model).select(`${model}.${idField}`),
-					).limit(1);
+					);
+					// SQL Server has no `LIMIT`; a `top(1)` subquery is the
+					// server-correct single-row form. Every other dialect uses
+					// `limit(1)`.
+					const targetIds =
+						config?.type === "mssql" ? selectIds.top(1) : selectIds.limit(1);
 					const query = db
 						.deleteFrom(model)
 						.where(`${model}.${idField}`, "in", targetIds);
 					return deleteWithReturning(query);
+				},
+				async incrementOne({ model, modelKey = model, where, increment, set }) {
+					const { and, or } = convertWhereClause(model, modelKey, where);
+					const applyWhere = (query: any) => {
+						if (and) {
+							query = query.where((eb: any) =>
+								eb.and(and.map((expr) => expr(eb))),
+							);
+						}
+						if (or) {
+							query = query.where((eb: any) =>
+								eb.or(or.map((expr) => expr(eb))),
+							);
+						}
+						return query;
+					};
+					// Each increment field becomes a self-referential assignment
+					// (`field = field + delta`) so the database, not the
+					// application, performs the arithmetic atomically. Absolute
+					// `set` assignments are applied in the same statement.
+					const assignments: Record<string, any> = { ...(set ?? {}) };
+					for (const [field, delta] of Object.entries(increment)) {
+						assignments[field] = sql`${sql.ref(field)} + ${delta}`;
+					}
+					const idField = getFieldName({ model: modelKey, field: "id" });
+
+					if (config?.type === "mysql") {
+						// MySQL does not support `UPDATE ... RETURNING`. Hold the
+						// target row under `SELECT ... FOR UPDATE`, apply the guarded
+						// update inside the same transaction, then read the row back.
+						// Concurrent claimants block on the lock; a racer that
+						// invalidated the guard observes zero updated rows.
+						const incrementInTransaction = async (trx: any) => {
+							const target = await applyWhere(
+								trx.selectFrom(model).select(`${model}.${idField}`).forUpdate(),
+							)
+								.limit(1)
+								.executeTakeFirst();
+							if (!target) return null;
+							const targetId = target[idField] ?? target.id;
+							if (targetId === undefined || targetId === null) return null;
+							const updated = await applyWhere(
+								trx.updateTable(model).set(assignments),
+							)
+								.where(`${model}.${idField}`, "=", targetId)
+								.executeTakeFirst();
+							if (Number(updated.numUpdatedRows) === 0) return null;
+							return (
+								(await trx
+									.selectFrom(model)
+									.selectAll()
+									.where(`${model}.${idField}`, "=", targetId)
+									.limit(1)
+									.executeTakeFirst()) ?? null
+							);
+						};
+						return inTransaction
+							? incrementInTransaction(db)
+							: db.transaction().execute(incrementInTransaction);
+					}
+
+					// Scope the update to a single matching row by targeting
+					// `id IN (SELECT id WHERE guard LIMIT 1)`, mirroring consumeOne. A
+					// bare guarded UPDATE would mutate every matching row, violating the
+					// single-row contract when the guard is non-unique.
+					const selectIds = applyWhere(
+						db.selectFrom(model).select(`${model}.${idField}`),
+					);
+					// SQL Server has no `LIMIT`; a `top(1)` subquery is the
+					// server-correct single-row form. Every other dialect uses
+					// `limit(1)`.
+					const targetIds =
+						config?.type === "mssql" ? selectIds.top(1) : selectIds.limit(1);
+					const updateQuery = applyWhere(
+						db.updateTable(model).set(assignments),
+					).where(`${model}.${idField}`, "in", targetIds);
+					if (config?.type === "mssql") {
+						return (
+							(await updateQuery.outputAll("inserted").executeTakeFirst()) ??
+							null
+						);
+					}
+					return (await updateQuery.returningAll().executeTakeFirst()) ?? null;
 				},
 				options: config,
 			};
@@ -876,6 +1074,20 @@ export const kyselyAdapter = (
 
 	return (options: BetterAuthOptions): DBAdapter<BetterAuthOptions> => {
 		lazyOptions = options;
-		return adapter(options);
+		const instance = adapter(options);
+		const schemaCheck = createSchemaCheck(
+			() =>
+				findSchemaProblems(
+					db,
+					config?.type,
+					getExpectedSchema(options, { usePlural: config?.usePlural }),
+				),
+			"database",
+			options.database,
+		);
+		registerSchemaCheck(instance, schemaCheck, {
+			runtimeEnabled: checksSchema(options),
+		});
+		return instance;
 	};
 };

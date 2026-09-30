@@ -65,13 +65,43 @@ async function migrateAction(options: MigrateOptions) {
 		spinner.start();
 		let toBeAdded: any[];
 		let toBeCreated: any[];
+		let toBeAddedIndexes: Awaited<
+			ReturnType<typeof getMigrations>
+		>["toBeAddedIndexes"];
 		let runMigrations: () => Promise<void>;
 		let compileMigrations: () => Promise<string>;
 
 		try {
-			const migrations = await getMigrations(auth.options);
+			// Core auth tables do not inherit disableMigration from same-key plugins.
+			// Aliases with the same physical modelName disable the whole table in
+			// upstream getSchema, so execution and SQL generation share one plan.
+			const migrationOptions = options.includeBetterAuth
+				? auth.options
+				: {
+						...auth.options,
+						plugins: [
+							...(auth.options.plugins ?? []),
+							{
+								id: "btst-excluded-auth-tables",
+								schema: Object.fromEntries(
+									DEFAULT_AUTH_TABLES.map((table) => [
+										`btst-excluded-${table}`,
+										{ modelName: table, fields: {}, disableMigration: true },
+									]),
+								),
+							},
+						],
+					};
+			const migrations = await getMigrations(migrationOptions);
+			if (migrations.schemaProblems.length) {
+				spinner.stop();
+				logger.error("Required columns reject inserts. Nothing ran.");
+				for (const problem of migrations.schemaProblems) logger.error(problem);
+				process.exit(1);
+			}
 			toBeAdded = migrations.toBeAdded;
 			toBeCreated = migrations.toBeCreated;
+			toBeAddedIndexes = migrations.toBeAddedIndexes;
 			runMigrations = migrations.runMigrations;
 			compileMigrations = migrations.compileMigrations;
 			spinner.stop();
@@ -93,13 +123,20 @@ async function migrateAction(options: MigrateOptions) {
 			toBeAdded = toBeAdded.filter(
 				(c) => !DEFAULT_AUTH_TABLES.includes(c.table.toLowerCase()),
 			);
+			toBeAddedIndexes = toBeAddedIndexes.filter(
+				(index) => !DEFAULT_AUTH_TABLES.includes(index.table.toLowerCase()),
+			);
 			console.log(
 				"🧹 Filtered out Better Auth default tables (user, session, etc.)",
 			);
 		}
 
 		// 8. Show pending migrations
-		if (toBeCreated.length === 0 && toBeAdded.length === 0) {
+		if (
+			toBeCreated.length === 0 &&
+			toBeAdded.length === 0 &&
+			toBeAddedIndexes.length === 0
+		) {
 			console.log("✓ Database is up to date.");
 			return;
 		}
@@ -112,6 +149,13 @@ async function migrateAction(options: MigrateOptions) {
 		if (toBeAdded.length > 0) {
 			console.log(`  Columns to add: ${toBeAdded.length}`);
 			toBeAdded.forEach((c) => console.log(`    - ${c.table}.${c.column}`));
+		}
+
+		if (toBeAddedIndexes.length > 0) {
+			console.log(`  Indexes to add: ${toBeAddedIndexes.length}`);
+			toBeAddedIndexes.forEach((index) =>
+				console.log(`    - ${index.table}.${index.name}`),
+			);
 		}
 
 		// 9. If output is specified, generate SQL file instead of running

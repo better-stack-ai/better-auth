@@ -202,7 +202,7 @@ export function filterKyselyAuthTables(code: string): string {
 		// Skip CREATE INDEX statements for auth tables
 		// Match patterns like: CREATE INDEX "session_userId_idx" ON "session"
 		const indexMatch = line.match(
-			/CREATE\s+INDEX\s+["`']?\w*["`']?\s+ON\s+["`']?(\w+)["`']?/i,
+			/CREATE\s+(?:UNIQUE\s+)?INDEX\s+["`']?\w*["`']?\s+ON\s+["`']?(\w+)["`']?/i,
 		);
 		if (indexMatch) {
 			const tableName = indexMatch[1];

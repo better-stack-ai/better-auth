@@ -10,7 +10,12 @@ import {
 	it,
 	vi,
 } from "vitest";
-import { verifyAccessToken } from "./verify";
+import {
+	createInsufficientScopeError,
+	isInsufficientScopeError,
+	verifyAccessTokenRequest,
+	verifyBearerToken,
+} from "./verify";
 
 const issuer = "https://auth.example.com";
 const audience = "https://api.example.com/v1";
@@ -21,7 +26,7 @@ const mockedFetch = vi.fn() as unknown as typeof fetch &
 
 let keyCounter = 0;
 
-describe("verifyAccessToken", () => {
+describe("verifyBearerToken", () => {
 	const originalFetch = globalThis.fetch;
 
 	beforeAll(() => {
@@ -112,9 +117,230 @@ describe("verifyAccessToken", () => {
 		}
 	}
 
-	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9654
-	 */
+	it("should report every missing scope in one insufficient_scope failure", async () => {
+		// RFC 6750 §3.1: one scope per challenge would cost the user a browser
+		// round-trip for each missing scope.
+		const { publicJWK, privateKey, kid } = await createTestJWKS();
+		const token = await createSignedToken(privateKey, kid, {
+			scope: "files:read",
+		});
+		mockJWKSResponse(publicJWK);
+
+		await expect(
+			verifyBearerToken(token, {
+				jwksUrl,
+				verifyOptions: { issuer, audience },
+				requiredScopes: ["files:read", "files:write", "files:delete"],
+			}),
+		).rejects.toMatchObject({
+			status: "FORBIDDEN",
+			body: {
+				error: "insufficient_scope",
+				scope: "files:write files:delete",
+			},
+		});
+	});
+
+	it("should recognize only typed insufficient-scope API errors", () => {
+		const error = createInsufficientScopeError(["files:write"]);
+
+		expect(isInsufficientScopeError(error)).toBe(true);
+		expect(
+			isInsufficientScopeError(
+				new APIError("FORBIDDEN", {
+					error: "insufficient_scope",
+					scope: "files:write",
+				}),
+			),
+		).toBe(false);
+		expect(
+			isInsufficientScopeError(
+				new APIError("FORBIDDEN", {
+					error: "insufficient_scope",
+					scope: 'files:write"',
+				}),
+			),
+		).toBe(false);
+		expect(isInsufficientScopeError(new Error("insufficient_scope"))).toBe(
+			false,
+		);
+	});
+
+	it.each([
+		"",
+		'bad "quote"',
+		"bad\\slash",
+		"bad\r\ncontrol",
+		"café",
+	])("should reject an invalid insufficient-scope error_description at construction: %s", (description) => {
+		expect(() =>
+			createInsufficientScopeError(["files:write"], description),
+		).toThrow(new TypeError("invalid error_description"));
+	});
+
+	it.each([
+		42,
+		null,
+	])("should reject a non-string insufficient-scope error_description at construction: %j", (description) => {
+		expect(() =>
+			Reflect.apply(createInsufficientScopeError, undefined, [
+				["files:write"],
+				description,
+			]),
+		).toThrow(new TypeError("invalid error_description"));
+	});
+
+	it("should accept every error_description boundary character", () => {
+		const description = " !#[]~";
+		const error = createInsufficientScopeError(["files:write"], description);
+
+		expect(isInsufficientScopeError(error)).toBe(true);
+		expect(error.body).toMatchObject({
+			message: description,
+			error_description: description,
+		});
+	});
+
+	it("should construct a valid default insufficient-scope description", () => {
+		const error = createInsufficientScopeError(["files:write"]);
+
+		expect(isInsufficientScopeError(error)).toBe(true);
+		expect(error.body).toMatchObject({
+			error_description: "access token is missing required scope: files:write",
+		});
+	});
+
+	it("should reject invalid required scopes before bearer token verification", async () => {
+		await expect(
+			verifyBearerToken("not-a-jwt", {
+				jwksUrl,
+				verifyOptions: { issuer, audience },
+				requiredScopes: ["files:read invalid"],
+				remoteVerify: {
+					introspectUrl: `${issuer}/introspect`,
+					clientId: "resource-server",
+					clientSecret: "secret",
+				},
+			}),
+		).rejects.toThrow("invalid required scope");
+		expect(mockedFetch).not.toHaveBeenCalled();
+	});
+
+	it("should reject invalid required scopes before request credentials", async () => {
+		await expect(
+			verifyAccessTokenRequest(
+				{
+					authorizationHeader: undefined,
+					method: "GET",
+					url: audience,
+				},
+				{
+					jwksUrl,
+					verifyOptions: { issuer, audience },
+					requiredScopes: ["files:read invalid"],
+				},
+			),
+		).rejects.toThrow("invalid required scope");
+		expect(mockedFetch).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		null,
+		[],
+		{ read: true },
+		42,
+	])("should reject a malformed scope claim as an invalid token: %j", async (scope) => {
+		const { publicJWK, privateKey, kid } = await createTestJWKS();
+		const token = await createSignedToken(privateKey, kid, { scope });
+		mockJWKSResponse(publicJWK);
+
+		await expect(
+			verifyBearerToken(token, {
+				jwksUrl,
+				verifyOptions: { issuer, audience },
+			}),
+		).rejects.toMatchObject({
+			status: "UNAUTHORIZED",
+			body: { error: "invalid_token" },
+		});
+	});
+
+	it("should treat an absent scope claim as an empty granted-scope set", async () => {
+		const { publicJWK, privateKey, kid } = await createTestJWKS();
+		const token = await createSignedToken(privateKey, kid);
+		mockJWKSResponse(publicJWK);
+
+		await expect(
+			verifyBearerToken(token, {
+				jwksUrl,
+				verifyOptions: { issuer, audience },
+				requiredScopes: ["files:read"],
+			}),
+		).rejects.toMatchObject({
+			status: "FORBIDDEN",
+			body: { scope: "files:read" },
+		});
+	});
+
+	it("should deduplicate granted scopes before invoking a custom matcher", async () => {
+		const { publicJWK, privateKey, kid } = await createTestJWKS();
+		const token = await createSignedToken(privateKey, kid, {
+			scope: "files:read files:read files:write",
+		});
+		mockJWKSResponse(publicJWK);
+
+		await expect(
+			verifyBearerToken(token, {
+				jwksUrl,
+				verifyOptions: { issuer, audience },
+				requiredScopes: ["files"],
+				isScopeSatisfied(requiredScope, grantedScopes) {
+					return (
+						grantedScopes.size === 2 &&
+						[...grantedScopes].some((scope) =>
+							scope.startsWith(`${requiredScope}:`),
+						)
+					);
+				},
+			}),
+		).resolves.toMatchObject({ sub: "user-123" });
+	});
+
+	it("should use exact scope membership by default", async () => {
+		const { publicJWK, privateKey, kid } = await createTestJWKS();
+		const token = await createSignedToken(privateKey, kid, {
+			scope: "files:read",
+		});
+		mockJWKSResponse(publicJWK);
+
+		await expect(
+			verifyBearerToken(token, {
+				jwksUrl,
+				verifyOptions: { issuer, audience },
+				requiredScopes: ["files"],
+			}),
+		).rejects.toMatchObject({
+			status: "FORBIDDEN",
+			body: { scope: "files" },
+		});
+	});
+
+	it("should reject invalid configured scope tokens", async () => {
+		const { publicJWK, privateKey, kid } = await createTestJWKS();
+		const token = await createSignedToken(privateKey, kid, {
+			scope: "files:read",
+		});
+		mockJWKSResponse(publicJWK);
+
+		await expect(
+			verifyBearerToken(token, {
+				jwksUrl,
+				verifyOptions: { issuer, audience },
+				requiredScopes: ["files:read\r\nX-Test: injected"],
+			}),
+		).rejects.toThrow("invalid required scope");
+	});
+
 	it("should translate jose claim validation failures to unauthorized API errors", async () => {
 		const { publicJWK, privateKey, kid } = await createTestJWKS();
 		const token = await createSignedToken(privateKey, kid, {
@@ -123,7 +349,7 @@ describe("verifyAccessToken", () => {
 		mockJWKSResponse(publicJWK);
 
 		await expectUnauthorized(
-			verifyAccessToken(token, {
+			verifyBearerToken(token, {
 				jwksUrl,
 				verifyOptions: { issuer, audience },
 			}),
@@ -147,7 +373,7 @@ describe("verifyAccessToken", () => {
 		mockJWKSResponse(publicJWKWithMatchingKid);
 
 		await expectUnauthorized(
-			verifyAccessToken(token, {
+			verifyBearerToken(token, {
 				jwksUrl,
 				verifyOptions: { issuer, audience },
 			}),
@@ -167,7 +393,7 @@ describe("verifyAccessToken", () => {
 		mockJWKSResponse(unrelatedKey.publicJWK);
 
 		await expectUnauthorized(
-			verifyAccessToken(token, {
+			verifyBearerToken(token, {
 				jwksUrl,
 				verifyOptions: { issuer, audience },
 			}),
@@ -177,17 +403,18 @@ describe("verifyAccessToken", () => {
 	/**
 	 * @see https://github.com/better-auth/better-auth/issues/9654
 	 */
-	it("should translate missing kid failures to unauthorized API errors", async () => {
-		const { privateKey } = await createTestJWKS();
+	it("should verify a JWS without kid using the fetched JWKS", async () => {
+		const { publicJWK, privateKey } = await createTestJWKS();
 		const token = await createSignedToken(privateKey, undefined);
+		mockJWKSResponse(publicJWK);
 
-		await expectUnauthorized(
-			verifyAccessToken(token, {
+		await expect(
+			verifyBearerToken(token, {
 				jwksUrl,
 				verifyOptions: { issuer, audience },
 			}),
-		);
-		expect(mockedFetch).not.toHaveBeenCalled();
+		).resolves.toMatchObject({ sub: "user-123" });
+		expect(mockedFetch).toHaveBeenCalledTimes(1);
 	});
 
 	/**
@@ -204,7 +431,7 @@ describe("verifyAccessToken", () => {
 		mockJWKSResponse(publicJWK);
 
 		await expectUnauthorized(
-			verifyAccessToken(token, {
+			verifyBearerToken(token, {
 				jwksUrl,
 				verifyOptions: { issuer, audience },
 			}),
@@ -214,7 +441,7 @@ describe("verifyAccessToken", () => {
 
 	it("should not verify a token against a JWKS cached for a different issuer with a colliding kid", async () => {
 		vi.resetModules();
-		const { verifyAccessToken: verify } = await import("./verify");
+		const { verifyBearerToken: verify } = await import("./verify");
 
 		const sharedKid = "shared-kid";
 		const keyA = await createTestJWKS(sharedKid);
@@ -271,7 +498,7 @@ describe("verifyAccessToken", () => {
 
 	it("should refetch a rotated key set once the cache TTL has elapsed", async () => {
 		vi.resetModules();
-		const { verifyAccessToken: verify } = await import("./verify");
+		const { verifyBearerToken: verify } = await import("./verify");
 
 		const rotatingKid = "rotating-kid";
 		const oldKey = await createTestJWKS(rotatingKid);
@@ -320,13 +547,250 @@ describe("verifyAccessToken", () => {
 		vi.resetModules();
 	});
 
+	it("should not retain function jwks sources in the cache", async () => {
+		vi.resetModules();
+		const { verifyJwsAccessToken: verify, jwksCache } = await import(
+			"./verify"
+		);
+		const { publicJWK, privateKey, kid } = await createTestJWKS();
+		const token = await createSignedToken(privateKey, kid);
+
+		// A fresh closure per call, like per-request callers do.
+		for (let i = 0; i < 3; i++) {
+			await expect(
+				verify(token, {
+					jwksFetch: async () => ({ keys: [publicJWK] }),
+					verifyOptions: { issuer, audience },
+				}),
+			).resolves.toMatchObject({ sub: "user-123" });
+		}
+
+		expect(jwksCache.size).toBe(0);
+		vi.resetModules();
+	});
+
+	it("should invoke a function jwks source on every verification", async () => {
+		vi.resetModules();
+		const { verifyJwsAccessToken: verify } = await import("./verify");
+		const { publicJWK, privateKey, kid } = await createTestJWKS();
+		const token = await createSignedToken(privateKey, kid);
+		const jwksFetch = vi.fn(async () => ({ keys: [publicJWK] }));
+
+		await expect(
+			verify(token, { jwksFetch, verifyOptions: { issuer, audience } }),
+		).resolves.toMatchObject({ sub: "user-123" });
+		await expect(
+			verify(token, { jwksFetch, verifyOptions: { issuer, audience } }),
+		).resolves.toMatchObject({ sub: "user-123" });
+
+		expect(jwksFetch).toHaveBeenCalledTimes(2);
+		vi.resetModules();
+	});
+
+	it("should fetch a function jwks source once across verifications sharing a jwksCacheKey", async () => {
+		vi.resetModules();
+		const { verifyJwsAccessToken: verify } = await import("./verify");
+		const { publicJWK, privateKey, kid } = await createTestJWKS();
+		const token = await createSignedToken(privateKey, kid);
+		const jwksCacheKey = {};
+		let fetchCount = 0;
+
+		// A fresh closure per call, like per-request callers do.
+		for (let i = 0; i < 3; i++) {
+			await expect(
+				verify(token, {
+					jwksFetch: async () => {
+						fetchCount++;
+						return { keys: [publicJWK] };
+					},
+					jwksCacheKey,
+					verifyOptions: { issuer, audience },
+				}),
+			).resolves.toMatchObject({ sub: "user-123" });
+		}
+
+		expect(fetchCount).toBe(1);
+		vi.resetModules();
+	});
+
+	it("should isolate cached function jwks sources by jwksCacheKey object", async () => {
+		vi.resetModules();
+		const { verifyJwsAccessToken: verify } = await import("./verify");
+		const sourceA = await createTestJWKS();
+		const sourceB = await createTestJWKS();
+		const tokenA = await createSignedToken(sourceA.privateKey, sourceA.kid);
+		const tokenB = await createSignedToken(sourceB.privateKey, sourceB.kid);
+		const cacheKeyA = {};
+		const cacheKeyB = {};
+		const fetchA = vi.fn(async () => ({ keys: [sourceA.publicJWK] }));
+		const fetchB = vi.fn(async () => ({ keys: [sourceB.publicJWK] }));
+
+		await expect(
+			verify(tokenA, {
+				jwksFetch: fetchA,
+				jwksCacheKey: cacheKeyA,
+				verifyOptions: { issuer, audience },
+			}),
+		).resolves.toMatchObject({ sub: "user-123" });
+		await expect(
+			verify(tokenB, {
+				jwksFetch: fetchB,
+				jwksCacheKey: cacheKeyB,
+				verifyOptions: { issuer, audience },
+			}),
+		).resolves.toMatchObject({ sub: "user-123" });
+		// Source B's fetch must not have evicted source A's entry.
+		await expect(
+			verify(tokenA, {
+				jwksFetch: fetchA,
+				jwksCacheKey: cacheKeyA,
+				verifyOptions: { issuer, audience },
+			}),
+		).resolves.toMatchObject({ sub: "user-123" });
+
+		expect(fetchA).toHaveBeenCalledTimes(1);
+		expect(fetchB).toHaveBeenCalledTimes(1);
+		vi.resetModules();
+	});
+
+	it("should refetch a function jwks source when the token kid is missing from the cached set", async () => {
+		vi.resetModules();
+		const { verifyJwsAccessToken: verify } = await import("./verify");
+		const oldKey = await createTestJWKS();
+		const newKey = await createTestJWKS();
+		const jwksCacheKey = {};
+		let currentKeys = [oldKey.publicJWK];
+		const jwksFetch = vi.fn(async () => ({ keys: currentKeys }));
+
+		const oldToken = await createSignedToken(oldKey.privateKey, oldKey.kid);
+		await expect(
+			verify(oldToken, {
+				jwksFetch,
+				jwksCacheKey,
+				verifyOptions: { issuer, audience },
+			}),
+		).resolves.toMatchObject({ sub: "user-123" });
+
+		// A newly rotated-in kid is absent from the cached set and must refetch.
+		currentKeys = [oldKey.publicJWK, newKey.publicJWK];
+		const newToken = await createSignedToken(newKey.privateKey, newKey.kid);
+		await expect(
+			verify(newToken, {
+				jwksFetch,
+				jwksCacheKey,
+				verifyOptions: { issuer, audience },
+			}),
+		).resolves.toMatchObject({ sub: "user-123" });
+
+		expect(jwksFetch).toHaveBeenCalledTimes(2);
+		vi.resetModules();
+	});
+
+	it("should refetch a cached jwks source when a no-kid token fails against the cached set", async () => {
+		vi.resetModules();
+		const { verifyJwsAccessToken: verify } = await import("./verify");
+		const oldKey = await createTestJWKS();
+		const newKey = await createTestJWKS();
+		let currentKey = oldKey.publicJWK;
+		mockedFetch.mockImplementation(() =>
+			Promise.resolve(jwksResponse(currentKey)),
+		);
+
+		const oldToken = await createSignedToken(oldKey.privateKey, undefined);
+		await expect(
+			verify(oldToken, {
+				jwksFetch: jwksUrl,
+				verifyOptions: { issuer, audience },
+			}),
+		).resolves.toMatchObject({ sub: "user-123" });
+
+		currentKey = newKey.publicJWK;
+		const newToken = await createSignedToken(newKey.privateKey, undefined);
+		await expect(
+			verify(newToken, {
+				jwksFetch: jwksUrl,
+				verifyOptions: { issuer, audience },
+			}),
+		).resolves.toMatchObject({ sub: "user-123" });
+
+		expect(mockedFetch).toHaveBeenCalledTimes(2);
+		mockedFetch.mockReset();
+		vi.resetModules();
+	});
+
+	it("should not repeatedly refetch a fresh jwks source for invalid no-kid tokens", async () => {
+		vi.resetModules();
+		const { verifyJwsAccessToken: verify } = await import("./verify");
+		const validKey = await createTestJWKS();
+		const invalidKey = await createTestJWKS();
+		mockedFetch.mockImplementation(() =>
+			Promise.resolve(jwksResponse(validKey.publicJWK)),
+		);
+
+		const validToken = await createSignedToken(validKey.privateKey, undefined);
+		await expect(
+			verify(validToken, {
+				jwksFetch: jwksUrl,
+				verifyOptions: { issuer, audience },
+			}),
+		).resolves.toMatchObject({ sub: "user-123" });
+
+		const invalidToken = await createSignedToken(
+			invalidKey.privateKey,
+			undefined,
+		);
+		await expect(
+			verify(invalidToken, {
+				jwksFetch: jwksUrl,
+				verifyOptions: { issuer, audience },
+			}),
+		).rejects.toThrow();
+		await expect(
+			verify(invalidToken, {
+				jwksFetch: jwksUrl,
+				verifyOptions: { issuer, audience },
+			}),
+		).rejects.toThrow();
+
+		expect(mockedFetch).toHaveBeenCalledTimes(2);
+		mockedFetch.mockReset();
+		vi.resetModules();
+	});
+
+	it("should cache a string jwks source across verifications within the TTL", async () => {
+		vi.resetModules();
+		const { verifyJwsAccessToken: verify } = await import("./verify");
+		const { publicJWK, privateKey, kid } = await createTestJWKS();
+		const token = await createSignedToken(privateKey, kid);
+		mockedFetch.mockImplementation(() =>
+			Promise.resolve(jwksResponse(publicJWK)),
+		);
+
+		await expect(
+			verify(token, {
+				jwksFetch: jwksUrl,
+				verifyOptions: { issuer, audience },
+			}),
+		).resolves.toMatchObject({ sub: "user-123" });
+		await expect(
+			verify(token, {
+				jwksFetch: jwksUrl,
+				verifyOptions: { issuer, audience },
+			}),
+		).resolves.toMatchObject({ sub: "user-123" });
+
+		expect(mockedFetch).toHaveBeenCalledTimes(1);
+		mockedFetch.mockReset();
+		vi.resetModules();
+	});
+
 	/**
 	 * @see https://github.com/better-auth/better-auth/issues/9654
 	 */
 	it("should leave JWKS infrastructure failures as jose errors", async () => {
 		vi.resetModules();
 		const { errors: isolatedJoseErrors } = await import("jose");
-		const { verifyAccessToken: verifyAccessTokenWithIsolatedJwksCache } =
+		const { verifyBearerToken: verifyAccessTokenWithIsolatedJwksCache } =
 			await import("./verify");
 		const { privateKey, kid } = await createTestJWKS();
 		const token = await createSignedToken(privateKey, kid);
@@ -360,7 +824,7 @@ describe("verifyAccessToken", () => {
 			mockIntrospection({ scope: "read" });
 
 			await expect(
-				verifyAccessToken("opaque-token-for-another-resource", {
+				verifyBearerToken("opaque-token-for-another-resource", {
 					verifyOptions: { issuer, audience },
 					remoteVerify,
 				}),
@@ -374,7 +838,7 @@ describe("verifyAccessToken", () => {
 			});
 
 			await expect(
-				verifyAccessToken("token-minted-for-other-api", {
+				verifyBearerToken("token-minted-for-other-api", {
 					verifyOptions: { issuer, audience },
 					remoteVerify,
 				}),
@@ -385,7 +849,7 @@ describe("verifyAccessToken", () => {
 			mockIntrospection({ aud: audience, scope: "read" });
 
 			await expect(
-				verifyAccessToken("valid-token", {
+				verifyBearerToken("valid-token", {
 					verifyOptions: { issuer, audience },
 					remoteVerify,
 				}),
@@ -396,7 +860,7 @@ describe("verifyAccessToken", () => {
 			mockIntrospection({ scope: "read" });
 
 			await expect(
-				verifyAccessToken("opaque-token", {
+				verifyBearerToken("opaque-token", {
 					verifyOptions: { issuer, audience },
 					remoteVerify: { ...remoteVerify, allowMissingAudience: true },
 				}),
@@ -410,7 +874,7 @@ describe("verifyAccessToken", () => {
 			});
 
 			await expect(
-				verifyAccessToken("token-minted-for-other-api", {
+				verifyBearerToken("token-minted-for-other-api", {
 					verifyOptions: { issuer, audience },
 					remoteVerify: { ...remoteVerify, allowMissingAudience: true },
 				}),

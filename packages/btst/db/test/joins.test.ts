@@ -80,10 +80,10 @@ describe("Joins Support - Memory Adapter", () => {
 			memoryDB[tableName] = [];
 		}
 
-		// Create adapter with experimental joins enabled
+		// Create adapter with database joins enabled
 		const options = {
-			experimental: {
-				joins: true,
+			advanced: {
+				database: { joins: true },
 			},
 			plugins: [
 				{
@@ -342,17 +342,17 @@ describe("Joins Support - Memory Adapter", () => {
 		});
 	});
 
-	describe("experimental joins configuration", () => {
-		it("should have experimental joins enabled", () => {
-			// The memory adapter should work with experimental: { joins: true }
+	describe("database joins configuration", () => {
+		it("should have database joins enabled", () => {
+			// The memory adapter should work with advanced: { database: { joins: true } }
 			// This test verifies the adapter is properly configured
 			expect(adapter).toBeDefined();
 			expect(adapter.findOne).toBeDefined();
 			expect(adapter.findMany).toBeDefined();
 		});
 
-		it("should work without experimental joins (fallback mode)", async () => {
-			// Create adapter without experimental joins
+		it("should work without database joins (fallback mode)", async () => {
+			// Create adapter without database joins
 			const fallbackAdapter = memoryAdapter(memoryDB)({
 				plugins: [
 					{

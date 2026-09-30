@@ -24,6 +24,176 @@ describe("E2E CLI tests", () => {
 		await fs.rm(testDir, { recursive: true, force: true });
 	});
 
+	/** @see https://github.com/better-auth/better-auth/blob/v1.7.6/packages/better-auth/src/db/get-migration.ts */
+	it("generates pending custom indexes when tables and columns already exist", async () => {
+		await fs.mkdir(testDir, { recursive: true });
+		await fs.writeFile(
+			testSchema,
+			`
+import { defineDb } from "@btst/db";
+export default defineDb({
+  product: {
+    modelName: "product",
+    fields: { name: { type: "string", required: true } },
+    indexes: [{ fields: ["name"] }],
+  },
+});
+`,
+		);
+		const databasePath = path.join(testDir, "indexes.sqlite");
+		const Database = (await import("better-sqlite3")).default;
+		const database = new Database(databasePath);
+		database.exec(
+			"CREATE TABLE product (id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL)",
+		);
+		database.close();
+		const outputPath = path.join(testDir, "indexes.sql");
+
+		await execFileAsync(process.execPath, [
+			"./dist/index.mjs",
+			"migrate",
+			"--config",
+			testSchema,
+			"--output",
+			outputPath,
+			"--database-url",
+			`sqlite:${databasePath}`,
+			"--yes",
+		]);
+
+		const sql = await fs.readFile(outputPath, "utf8");
+		expect(sql).toMatch(/create index .+ on "product" \("name"\)/i);
+		expect(sql).not.toContain("create table");
+	});
+
+	/** @see https://github.com/better-auth/better-auth/blob/v1.7.6/packages/better-auth/src/db/get-migration.ts */
+	it("applies custom unique indexes without creating excluded auth tables", async () => {
+		await fs.mkdir(testDir, { recursive: true });
+		await fs.writeFile(
+			testSchema,
+			`
+import { defineDb } from "@btst/db";
+export default defineDb({
+  product: {
+    modelName: "product",
+    fields: { name: { type: "string", required: true } },
+    indexes: [{ fields: ["name"], unique: true }],
+  },
+});
+`,
+		);
+		const databasePath = path.join(testDir, "unique-indexes.sqlite");
+		const Database = (await import("better-sqlite3")).default;
+		let database = new Database(databasePath);
+		database.exec(
+			"CREATE TABLE product (id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL)",
+		);
+		database.close();
+		await execFileAsync(process.execPath, [
+			"./dist/index.mjs",
+			"migrate",
+			"--config",
+			testSchema,
+			"--database-url",
+			`sqlite:${databasePath}`,
+			"--yes",
+		]);
+		database = new Database(databasePath);
+		try {
+			expect(
+				database
+					.prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
+					.all(),
+			).toEqual([{ name: "product" }]);
+			const indexes = database
+				.prepare('PRAGMA index_list("product")')
+				.all() as Array<{ unique: number; origin: string }>;
+			expect(
+				indexes.some((index) => index.unique === 1 && index.origin === "c"),
+			).toBe(true);
+		} finally {
+			database.close();
+		}
+	});
+
+	/** @see https://github.com/better-auth/better-auth/blob/v1.7.6/packages/cli/src/commands/generate.ts */
+	it("warns about unwritable Prisma columns even when the schema is unchanged", async () => {
+		await fs.mkdir(testDir, { recursive: true });
+		await fs.writeFile(
+			testSchema,
+			`
+import { defineDb } from "@btst/db";
+export default defineDb({ product: { modelName: "product", fields: { name: { type: "string", required: true } } } });
+`,
+		);
+		const outputPath = path.join(testDir, "schema.prisma");
+		const args = [
+			"./dist/index.mjs",
+			"generate",
+			"--config",
+			testSchema,
+			"--orm",
+			"prisma",
+			"--output",
+			outputPath,
+			"--include-better-auth",
+			"--yes",
+		];
+		await execFileAsync(process.execPath, args);
+		const original = await fs.readFile(outputPath, "utf8");
+		await fs.writeFile(
+			outputPath,
+			original.replace("model Product {", "model Product {\n  legacy String"),
+		);
+		// Let the generator normalize the added column before the no-change run.
+		await execFileAsync(process.execPath, args);
+		const { stdout, stderr } = await execFileAsync(process.execPath, args);
+		expect(stdout).toContain("Schema is up to date.");
+		expect(stderr).toContain(
+			'Column "legacy" on table "Product" is required but Better Auth never writes it',
+		);
+	});
+
+	/** @see https://github.com/better-auth/better-auth/blob/v1.7.6/packages/cli/src/commands/migrate.ts */
+	it("refuses migrations when an existing custom column rejects inserts", async () => {
+		await fs.mkdir(testDir, { recursive: true });
+		await fs.writeFile(
+			testSchema,
+			`
+import { defineDb } from "@btst/db";
+export default defineDb({ product: { modelName: "product", fields: { name: { type: "string", required: true } }, indexes: [{fields: ["name"]}] } });
+`,
+		);
+		const databasePath = path.join(testDir, "required-column.sqlite");
+		const Database = (await import("better-sqlite3")).default;
+		const database = new Database(databasePath);
+		try {
+			database.exec(
+				"CREATE TABLE product (id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, legacy TEXT NOT NULL)",
+			);
+			await expect(
+				execFileAsync(process.execPath, [
+					"./dist/index.mjs",
+					"migrate",
+					"--config",
+					testSchema,
+					"--database-url",
+					`sqlite:${databasePath}`,
+					"--yes",
+				]),
+			).rejects.toMatchObject({
+				code: 1,
+				stderr: expect.stringContaining('Column "legacy"'),
+			});
+			const indexes = database
+				.prepare('PRAGMA index_list("product")')
+				.all() as Array<{ origin: string }>;
+			expect(indexes.some((index) => index.origin === "c")).toBe(false);
+		} finally {
+			database.close();
+		}
+	});
+
 	it("should run generate command for Prisma", async () => {
 		// Create test directory and schema
 		await fs.mkdir(testDir, { recursive: true });
