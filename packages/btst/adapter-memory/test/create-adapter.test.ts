@@ -9,6 +9,7 @@ if (!globalThis.crypto) {
 }
 
 describe("createMemoryAdapter helper", () => {
+	/** @see https://github.com/better-stack-ai/better-auth/pull/51 */
 	it("matches date predicates by value inside isolated transactions", async () => {
 		const db = defineDb({
 			todo: {

@@ -40,9 +40,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
 
-      # Block breaking changes (feat!, fix!, etc.) on PRs targeting main
+      # Upstream stages breaking changes on next; BTST versions releases on main.
       - name: Block breaking changes on main
         if: >
+          github.repository == 'better-auth/better-auth' &&
           github.event.pull_request.base.ref == 'main' &&
           steps.lint_pr_title.outputs.error_message == null
         env:
