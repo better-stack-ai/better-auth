@@ -1,6 +1,6 @@
 {
   "name": "@btst/cli",
-  "version": "2.2.4",
+  "version": "3.0.0",
   "description": "CLI for btst schema generation and migration",
   "type": "module",
   "license": "MIT",
@@ -47,12 +47,13 @@
     "yocto-spinner": "^0.2.3",
     "prompts": "^2.4.2",
     "@mrleebo/prisma-ast": "^0.13.0",
-    "prettier": "^3.6.2"
+    "prettier": "^3.6.2",
+    "zod": "catalog:"
   },
   "peerDependencies": {
-    "better-auth": "1.6.16",
-    "@better-auth/core": "1.6.16",
-    "@better-auth/utils": "0.4.1"
+    "better-auth": "1.7.6",
+    "@better-auth/core": "1.7.6",
+    "@better-auth/utils": "0.4.2"
   },
   "optionalDependencies": {
     "pg": "^8.14.0",
@@ -63,8 +64,8 @@
     "better-auth": "workspace:*",
     "@better-auth/core": "workspace:*",
     "@better-auth/utils": "catalog:",
-    "kysely": "^0.28.5",
-    "drizzle-orm": "^0.38.2",
+    "kysely": "catalog:",
+    "drizzle-orm": "^0.45.2",
     "@prisma/client": "^5.22.0",
     "@types/prompts": "^2.4.9",
     "@types/better-sqlite3": "^7.6.13",

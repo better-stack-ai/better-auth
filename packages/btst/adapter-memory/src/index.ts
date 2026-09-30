@@ -47,10 +47,14 @@ export function createMemoryAdapter(
 		const mergedOptions = {
 			...options,
 			...adapterOptions,
-			experimental: {
-				...options.experimental,
-				...adapterOptions.experimental,
-				joins: true, // Enable experimental joins for btst adapters
+			advanced: {
+				...options.advanced,
+				...adapterOptions.advanced,
+				database: {
+					...options.advanced?.database,
+					...adapterOptions.advanced?.database,
+					joins: true,
+				},
 			},
 			plugins: [
 				...(options.plugins || []),

@@ -97,8 +97,8 @@ export async function createDatabaseConnection(
 export function createBetterAuthInstance(database: any, schema: any) {
 	return betterAuth({
 		database,
-		experimental: {
-			joins: true, // Enable experimental joins for relationship generation
+		advanced: {
+			database: { joins: true },
 		},
 		plugins: [
 			{

@@ -13,14 +13,14 @@ import {
 describe("createBtstCliReleasePlan", () => {
 	it("selects only @btst/cli for a CLI release", () => {
 		expect(
-			createBtstCliReleasePlan("btst-cli-v2.2.4", {
+			createBtstCliReleasePlan("btst-cli-v3.0.0", {
 				name: "@btst/cli",
-				version: "2.2.4",
+				version: "3.0.0",
 			}),
 		).toEqual({
 			packageDirectory: BTST_CLI_PACKAGE_DIRECTORY,
 			packageName: "@btst/cli",
-			version: "2.2.4",
+			version: "3.0.0",
 			npmTag: "latest",
 		});
 	});
@@ -28,16 +28,16 @@ describe("createBtstCliReleasePlan", () => {
 	it("formats only valid GitHub step outputs", () => {
 		expect(
 			formatBtstCliReleasePlan(
-				createBtstCliReleasePlan("btst-cli-v2.2.4", {
+				createBtstCliReleasePlan("btst-cli-v3.0.0", {
 					name: "@btst/cli",
-					version: "2.2.4",
+					version: "3.0.0",
 				}),
 			),
 		).toBe(
 			[
 				"package_directory=packages/btst/cli",
 				"package_name=@btst/cli",
-				"version=2.2.4",
+				"version=3.0.0",
 				"npm_tag=latest",
 				"",
 			].join("\n"),
@@ -62,7 +62,7 @@ describe("createBtstCliReleasePlan", () => {
 					"exec",
 					"tsx",
 					"../../../scripts/btst-cli-release-plan.ts",
-					"btst-cli-v2.2.4",
+					"btst-cli-v3.0.0",
 				],
 				{
 					cwd: repositoryRoot,
@@ -76,7 +76,7 @@ describe("createBtstCliReleasePlan", () => {
 				[
 					"package_directory=packages/btst/cli",
 					"package_name=@btst/cli",
-					"version=2.2.4",
+					"version=3.0.0",
 					"npm_tag=latest",
 					"",
 				].join("\n"),
@@ -103,18 +103,18 @@ describe("createBtstCliReleasePlan", () => {
 		"@btst/adapter-prisma",
 	])("rejects publishing %s through the CLI release path", (packageName) => {
 		expect(() =>
-			createBtstCliReleasePlan("btst-cli-v2.2.4", {
+			createBtstCliReleasePlan("btst-cli-v3.0.0", {
 				name: packageName,
-				version: "2.2.4",
+				version: "3.0.0",
 			}),
 		).toThrow("Release package must be @btst/cli");
 	});
 
 	it("rejects the cohort release tag", () => {
 		expect(() =>
-			createBtstCliReleasePlan("btst-v2.2.4", {
+			createBtstCliReleasePlan("btst-v3.0.0", {
 				name: "@btst/cli",
-				version: "2.2.4",
+				version: "3.0.0",
 			}),
 		).toThrow("CLI release tag must start with btst-cli-v");
 	});

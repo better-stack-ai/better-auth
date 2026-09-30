@@ -44,14 +44,14 @@ describe("BTST package dependency alignment", () => {
 		);
 
 		for (const manifest of manifests) {
-			expect(manifest.version, manifest.name).toBe("2.2.3");
+			expect(manifest.version, manifest.name).toBe("3.0.0");
 		}
 	});
 
-	it("versions the independently released CLI separately", async () => {
+	it("includes the CLI in this coordinated major release", async () => {
 		const manifest = await readManifest("cli");
 
-		expect(manifest.version).toBe("2.2.4");
+		expect(manifest.version).toBe("3.0.0");
 	});
 
 	/**
@@ -68,9 +68,9 @@ describe("BTST package dependency alignment", () => {
 			"@better-auth/utils",
 		);
 		expect(dbManifest.peerDependencies).toMatchObject({
-			"@better-auth/core": "1.6.16",
-			"@better-auth/utils": "0.4.1",
-			"better-auth": "1.6.16",
+			"@better-auth/core": "1.7.6",
+			"@better-auth/utils": "0.4.2",
+			"better-auth": "1.7.6",
 		});
 		expect(dbManifest.devDependencies).toMatchObject({
 			"@better-auth/core": "workspace:*",
@@ -81,9 +81,9 @@ describe("BTST package dependency alignment", () => {
 		for (const directory of betterAuthConsumers) {
 			const manifest = await readManifest(directory);
 			expect(manifest.peerDependencies, manifest.name).toMatchObject({
-				"@better-auth/core": "1.6.16",
-				"@better-auth/utils": "0.4.1",
-				"better-auth": "1.6.16",
+				"@better-auth/core": "1.7.6",
+				"@better-auth/utils": "0.4.2",
+				"better-auth": "1.7.6",
 			});
 		}
 	});

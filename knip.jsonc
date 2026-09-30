@@ -1,5 +1,5 @@
 {
-	"$schema": "https://unpkg.com/knip@5/schema-jsonc.json",
+	"$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
 	"ignoreExportsUsedInFile": {
 		"interface": true,
 		"type": true
@@ -21,9 +21,23 @@
 		// .js test file not matched by vitest ts entry pattern
 		"packages/btst/adapter-memory/test/create-adapter.test.js"
 	],
-	"ignoreBinaries": ["playwright", "changeset", "open", "remark", "tsx"],
+	"ignoreBinaries": [
+		"playwright",
+		"changeset",
+		"open",
+		"remark",
+		"tsx",
+		"pbcopy",
+		"xclip",
+		"clip",
+		"auth"
+	],
 	// exports used only by tests or external consumers — invisible to --production mode
 	"ignoreIssues": {
+		// Vendored helpers are also consumed by upstream adapter tests and entrypoints.
+		"packages/btst/adapter-drizzle/src/query-builders.ts": ["exports"],
+		"packages/btst/adapter-kysely/src/schema-check.ts": ["exports"],
+		"packages/oauth-provider/src/oauth-endpoint.ts": ["exports"],
 		"packages/cli/src/commands/init/index.ts": ["exports"],
 		"packages/cli/src/commands/init/utility/imports.ts": ["exports"],
 		"packages/sso/src/saml/assertions.ts": ["exports"],
@@ -61,7 +75,15 @@
 				"nanostores!"
 			]
 		},
+		"packages/release-tooling": {
+			"entry": ["src/commands/*.ts!"],
+			"project": ["src/**/*.ts!", "test/**/*.ts!", "vitest.config.ts!"]
+		},
 		"packages/test-utils": {},
+		"packages/electron": {
+			"entry": ["src/index.ts!", "src/client.typecheck.ts"],
+			"project": ["src/**/*.ts!", "test/**/*.ts"]
+		},
 		"packages/expo": {
 			// neverBundle externals: referenced in bundled output, not in source
 			"ignoreDependencies": ["@better-fetch/fetch", "better-call"]

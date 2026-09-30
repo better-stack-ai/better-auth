@@ -9,6 +9,68 @@ if (!globalThis.crypto) {
 }
 
 describe("createMemoryAdapter helper", () => {
+	it("matches date predicates by value inside isolated transactions", async () => {
+		const db = defineDb({
+			todo: {
+				modelName: "todo",
+				fields: { updatedAt: { type: "date", required: true } },
+			},
+		});
+		const adapter = createMemoryAdapter(db)({});
+		const updatedAt = new Date("2026-09-01T00:00:00.000Z");
+		const nextDate = new Date(updatedAt.getTime() + 1);
+		const todo = await adapter.create({ model: "todo", data: { updatedAt } });
+
+		await adapter.transaction(async (transaction) => {
+			expect(
+				await transaction.updateMany({
+					model: "todo",
+					where: [
+						{ field: "id", value: todo.id },
+						{ field: "updatedAt", value: updatedAt },
+					],
+					update: { updatedAt: nextDate },
+				}),
+			).toBe(1);
+			expect(
+				await transaction.updateMany({
+					model: "todo",
+					where: [{ field: "updatedAt", value: updatedAt }],
+					update: { updatedAt },
+				}),
+			).toBe(0);
+			expect(
+				await transaction.count({
+					model: "todo",
+					where: [
+						{ field: "updatedAt", value: new Date(nextDate), operator: "ne" },
+					],
+				}),
+			).toBe(0);
+		});
+	});
+
+	it("preserves advanced database options while enabling joins", async () => {
+		const db = defineDb({
+			todo: {
+				modelName: "todo",
+				fields: { title: { type: "string", required: true } },
+			},
+		});
+		const adapter = createMemoryAdapter(db, {
+			advanced: { database: { generateId: () => "configured-id" } },
+		})({
+			advanced: { database: { defaultFindManyLimit: 1 } },
+		});
+
+		const todo = await adapter.create({
+			model: "todo",
+			data: { title: "Preserved configuration" },
+		});
+
+		expect(todo.id).toBe("configured-id");
+	});
+
 	it("should create a memory adapter from Better DB schema", () => {
 		const db = defineDb({
 			todo: {
@@ -205,7 +267,7 @@ describe("createMemoryAdapter helper", () => {
 	});
 });
 
-describe("createMemoryAdapter with experimental joins", () => {
+describe("createMemoryAdapter with database joins", () => {
 	it("should support one-to-one joins", async () => {
 		const db = defineDb({
 			author: {
@@ -239,14 +301,14 @@ describe("createMemoryAdapter with experimental joins", () => {
 		});
 
 		const adapterFactory = createMemoryAdapter(db, {
-			experimental: {
-				joins: true,
+			advanced: {
+				database: { joins: true },
 			},
 		});
 
 		const adapter = adapterFactory({
-			experimental: {
-				joins: true,
+			advanced: {
+				database: { joins: true },
 			},
 		});
 
@@ -308,14 +370,14 @@ describe("createMemoryAdapter with experimental joins", () => {
 		});
 
 		const adapterFactory = createMemoryAdapter(db, {
-			experimental: {
-				joins: true,
+			advanced: {
+				database: { joins: true },
 			},
 		});
 
 		const adapter = adapterFactory({
-			experimental: {
-				joins: true,
+			advanced: {
+				database: { joins: true },
 			},
 		});
 
@@ -383,14 +445,14 @@ describe("createMemoryAdapter with experimental joins", () => {
 		});
 
 		const adapterFactory = createMemoryAdapter(db, {
-			experimental: {
-				joins: true,
+			advanced: {
+				database: { joins: true },
 			},
 		});
 
 		const adapter = adapterFactory({
-			experimental: {
-				joins: true,
+			advanced: {
+				database: { joins: true },
 			},
 		});
 
