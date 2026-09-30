@@ -732,3 +732,17 @@ describe("Edge cases and error handling", () => {
 		expect(result.code).toContain("@@unique");
 	});
 });
+
+/** @see https://github.com/better-auth/better-auth/blob/v1.7.6/packages/better-auth/src/db/get-migration.ts */
+it("filters auth unique indexes while preserving custom unique indexes", () => {
+	const result = filterAuthTables(
+		[
+			'create unique index "session_token_key" on "session" ("token");',
+			'create unique index "product_name_key" on "product" ("name");',
+		].join("\n"),
+		"kysely",
+	);
+	expect(result).toBe(
+		'create unique index "product_name_key" on "product" ("name");',
+	);
+});

@@ -145,6 +145,19 @@ async function generateAction(options: GenerateOptions) {
 			process.exit(1);
 		}
 
+		if (result?.schemaProblems?.length) {
+			logger.warn(
+				"Required columns reject inserts. Fix these columns manually:",
+			);
+			for (const problem of result.schemaProblems) logger.warn(problem);
+		}
+		if (result?.unsafeChanges?.length) {
+			logger.warn(
+				"Unsafe schema changes. Fix these columns before running the generated script:",
+			);
+			for (const change of result.unsafeChanges) logger.warn(change);
+		}
+
 		// 6. Handle output
 		if (!result?.code) {
 			console.log("Schema is up to date.");

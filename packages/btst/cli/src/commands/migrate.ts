@@ -72,7 +72,33 @@ async function migrateAction(options: MigrateOptions) {
 		let compileMigrations: () => Promise<string>;
 
 		try {
-			const migrations = await getMigrations(auth.options);
+			// Core auth tables do not inherit disableMigration from same-key plugins.
+			// Aliases with the same physical modelName disable the whole table in
+			// upstream getSchema, so execution and SQL generation share one plan.
+			const migrationOptions = options.includeBetterAuth
+				? auth.options
+				: {
+						...auth.options,
+						plugins: [
+							...(auth.options.plugins ?? []),
+							{
+								id: "btst-excluded-auth-tables",
+								schema: Object.fromEntries(
+									DEFAULT_AUTH_TABLES.map((table) => [
+										`btst-excluded-${table}`,
+										{ modelName: table, fields: {}, disableMigration: true },
+									]),
+								),
+							},
+						],
+					};
+			const migrations = await getMigrations(migrationOptions);
+			if (migrations.schemaProblems.length) {
+				spinner.stop();
+				logger.error("Required columns reject inserts. Nothing ran.");
+				for (const problem of migrations.schemaProblems) logger.error(problem);
+				process.exit(1);
+			}
 			toBeAdded = migrations.toBeAdded;
 			toBeCreated = migrations.toBeCreated;
 			toBeAddedIndexes = migrations.toBeAddedIndexes;
