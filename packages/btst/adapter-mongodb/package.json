@@ -49,9 +49,9 @@
     "mongodb": "^6.0.0 || ^7.0.0"
   },
   "devDependencies": {
-    "better-auth": "1.7.14",
-    "@better-auth/core": "1.7.14",
-    "@better-auth/utils": "0.5.1",
+    "better-auth": "workspace:*",
+    "@better-auth/core": "workspace:*",
+    "@better-auth/utils": "catalog:",
     "mongodb": "^7.1.0",
     "typescript": "catalog:",
     "unbuild": "catalog:"

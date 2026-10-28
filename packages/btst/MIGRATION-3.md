@@ -58,6 +58,7 @@ Kysely guarded consumption and D1 connection handling, and MongoDB transaction
 retry/cleanup behavior from that stable tag. The memory adapter retains BTST's
 Date equality fix for isolated transaction snapshots.
 
-Development dependencies resolve the same published Auth artifacts as consumers;
-they do not resolve this fork's older local Auth source packages. The sync script
-reads the exact `v1.7.14` Git tag, including the new Drizzle date helper.
+The complete fork source tree is synced to upstream's stable `v1.7.14` tag.
+Development dependencies use the workspace Auth/core sources at the same exact
+versions as consumer peers. The sync script vendors that current local tree,
+including the new Drizzle date helper, and preserves BTST's Date equality patch.

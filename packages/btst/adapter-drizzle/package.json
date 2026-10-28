@@ -49,9 +49,9 @@
     "drizzle-orm": "^0.45.2 || >=1.0.0-rc.1 <2.0.0"
   },
   "devDependencies": {
-    "better-auth": "1.7.14",
-    "@better-auth/core": "1.7.14",
-    "@better-auth/utils": "0.5.1",
+    "better-auth": "workspace:*",
+    "@better-auth/core": "workspace:*",
+    "@better-auth/utils": "catalog:",
     "drizzle-orm": "^0.45.2",
     "typescript": "catalog:",
     "unbuild": "catalog:"

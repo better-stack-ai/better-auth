@@ -1,11 +1,8 @@
 /**
- * ⚠️ AUTO-GENERATED WITH PATCHES - DO NOT MODIFY
+ * ⚠️ AUTO-GENERATED - DO NOT MODIFY
  *
- * This file is automatically copied from better-auth with patches applied.
+ * This file is automatically copied from better-auth.
  * Source: packages/memory-adapter/src/memory-adapter.ts
- *
- * Patches applied:
- * Compatibility patches are defined in scripts/sync-upstream.ts.
  *
  * To update: run `pnpm sync-upstream`
  * Any manual changes will be overwritten.

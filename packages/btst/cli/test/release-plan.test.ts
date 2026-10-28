@@ -97,18 +97,17 @@ describe("createBtstCliReleasePlan", () => {
 		}
 	});
 
-	it.each([
-		"@btst/db",
-		"@btst/adapter-drizzle",
-		"@btst/adapter-prisma",
-	])("rejects publishing %s through the CLI release path", (packageName) => {
-		expect(() =>
-			createBtstCliReleasePlan("btst-cli-v3.0.1", {
-				name: packageName,
-				version: "3.0.1",
-			}),
-		).toThrow("Release package must be @btst/cli");
-	});
+	it.each(["@btst/db", "@btst/adapter-drizzle", "@btst/adapter-prisma"])(
+		"rejects publishing %s through the CLI release path",
+		(packageName) => {
+			expect(() =>
+				createBtstCliReleasePlan("btst-cli-v3.0.1", {
+					name: packageName,
+					version: "3.0.1",
+				}),
+			).toThrow("Release package must be @btst/cli");
+		},
+	);
 
 	it("rejects the cohort release tag", () => {
 		expect(() =>

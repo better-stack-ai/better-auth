@@ -73,10 +73,19 @@ describe("BTST package dependency alignment", () => {
 			"better-auth": "1.7.14",
 		});
 		expect(dbManifest.devDependencies).toMatchObject({
-			"@better-auth/core": "1.7.14",
-			"@better-auth/utils": "0.5.1",
-			"better-auth": "1.7.14",
+			"@better-auth/core": "workspace:*",
+			"@better-auth/utils": "catalog:",
+			"better-auth": "workspace:*",
 		});
+		for (const packageDirectory of ["better-auth", "core"]) {
+			const manifest = JSON.parse(
+				await readFile(
+					resolve(process.cwd(), "../..", packageDirectory, "package.json"),
+					"utf8",
+				),
+			) as PackageManifest;
+			expect(manifest.version).toBe("1.7.14");
+		}
 
 		for (const directory of betterAuthConsumers) {
 			const manifest = await readManifest(directory);

@@ -5,7 +5,8 @@
  * Source: packages/kysely-adapter/src/kysely-adapter.ts
  *
  * Patches applied:
- * Compatibility patches are defined in scripts/sync-upstream.ts.
+ * - @better-auth/core/utils imports replaced with local ../utils/string
+ *   (avoids dependency issues with published @better-auth/core package)
  *
  * To update: run `pnpm sync-upstream`
  * Any manual changes will be overwritten.

@@ -49,9 +49,9 @@
     "@better-auth/utils": "0.5.1"
   },
   "devDependencies": {
-    "better-auth": "1.7.14",
-    "@better-auth/core": "1.7.14",
-    "@better-auth/utils": "0.5.1",
+    "better-auth": "workspace:*",
+    "@better-auth/core": "workspace:*",
+    "@better-auth/utils": "catalog:",
     "typescript": "catalog:",
     "unbuild": "catalog:",
     "vitest": "catalog:"

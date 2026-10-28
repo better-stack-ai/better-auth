@@ -60,9 +60,9 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260410.1",
-    "better-auth": "1.7.14",
-    "@better-auth/core": "1.7.14",
-    "@better-auth/utils": "0.5.1",
+    "better-auth": "workspace:*",
+    "@better-auth/core": "workspace:*",
+    "@better-auth/utils": "catalog:",
     "kysely": "catalog:",
     "typescript": "catalog:",
     "unbuild": "catalog:"

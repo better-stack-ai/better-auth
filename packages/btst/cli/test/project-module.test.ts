@@ -43,30 +43,33 @@ describe("importProjectModule", () => {
 	it.each([
 		["prisma", "@prisma/client"],
 		["drizzle", "drizzle-orm"],
-	] as const)("loads the %s adapter and its peer from the consumer project", async (orm, peerPackage) => {
-		const cwd = await createConsumerProject();
-		await writePackage(cwd, peerPackage, {
-			"package.json": JSON.stringify({
-				name: peerPackage,
-				type: "module",
-				exports: "./index.js",
-			}),
-			"index.js": `export const peerSource = ${JSON.stringify(peerPackage)};\n`,
-		});
-		await writePackage(cwd, "better-auth", {
-			"package.json": JSON.stringify({
-				name: "better-auth",
-				type: "module",
-				exports: { [`./adapters/${orm}`]: `./${orm}.js` },
-			}),
-			[`${orm}.js`]: `export { peerSource } from ${JSON.stringify(peerPackage)};\n`,
-		});
+	] as const)(
+		"loads the %s adapter and its peer from the consumer project",
+		async (orm, peerPackage) => {
+			const cwd = await createConsumerProject();
+			await writePackage(cwd, peerPackage, {
+				"package.json": JSON.stringify({
+					name: peerPackage,
+					type: "module",
+					exports: "./index.js",
+				}),
+				"index.js": `export const peerSource = ${JSON.stringify(peerPackage)};\n`,
+			});
+			await writePackage(cwd, "better-auth", {
+				"package.json": JSON.stringify({
+					name: "better-auth",
+					type: "module",
+					exports: { [`./adapters/${orm}`]: `./${orm}.js` },
+				}),
+				[`${orm}.js`]: `export { peerSource } from ${JSON.stringify(peerPackage)};\n`,
+			});
 
-		const adapter = await importProjectModule<{ peerSource: string }>(
-			`better-auth/adapters/${orm}`,
-			cwd,
-		);
+			const adapter = await importProjectModule<{ peerSource: string }>(
+				`better-auth/adapters/${orm}`,
+				cwd,
+			);
 
-		expect(adapter.peerSource).toBe(peerPackage);
-	});
+			expect(adapter.peerSource).toBe(peerPackage);
+		},
+	);
 });

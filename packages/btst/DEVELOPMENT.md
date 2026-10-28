@@ -141,21 +141,18 @@ For the full step-by-step runbook, see [WEEKLY-SYNC-UPSTREAM.md](../../WEEKLY-SY
 
 ### Running the Sync
 
-The sync reads the pinned stable Git tag `v1.7.14`, rather than the local Auth
-source tree. BTST development dependencies use the exact published Auth/core
-`1.7.14` and utils `0.5.1` artifacts, matching consumer peer dependencies.
-Fetch the tag before running the script:
-
-```bash
-git fetch https://github.com/better-auth/better-auth.git tag v1.7.14
-```
+The complete fork source tree is synced to the stable upstream tag `v1.7.14`.
+The script vendors files from that local source tree. BTST development dependencies
+use the workspace Auth/core packages at `1.7.14` and the utils `0.5.1` catalog entry,
+matching the exact published peer versions used by consumers.
 
 ```bash
 pnpm --filter @btst/cli exec tsx ../../../scripts/sync-upstream.ts
 ```
 
-Memory adapter sync preserves BTST’s timestamp equality patch for isolated
-transaction snapshots; the existing regression test covers this behavior.
+The fork’s memory adapter source retains BTST’s timestamp equality patch for
+isolated transaction snapshots. Sync copies that fix into the BTST adapter; the
+existing regression test covers this behavior.
 
 The script will print which files it copied and whether import patches were applied.
 It **validates all source paths first** and fails with a clear error if any are missing
