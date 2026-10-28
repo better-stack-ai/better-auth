@@ -62,3 +62,10 @@ The complete fork source tree is synced to upstream's stable `v1.7.14` tag.
 Development dependencies use the workspace Auth/core sources at the same exact
 versions as consumer peers. The sync script vendors that current local tree,
 including the new Drizzle date helper, and preserves BTST's Date equality patch.
+
+The fork also paginates database-backed session listing so `revokeOtherSessions`
+covers every active session when secondary storage and database session fallback
+are both enabled. This authentication source fix is not included in the eight
+`@btst/*` packages: they externalize the official `better-auth@1.7.14` npm package,
+which still has the query-limit regression in that configuration. Applications
+without secondary storage do not enter the affected fallback path.

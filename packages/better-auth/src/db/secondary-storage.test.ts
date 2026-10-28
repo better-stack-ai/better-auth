@@ -293,6 +293,41 @@ describe("secondary storage - bulk session cache eviction", () => {
 		},
 	);
 
+	it("lists and revokes every database-backed session beyond the query limit", async () => {
+		const store = new Map<string, string>();
+		const { auth, client, signInWithTestUser } = await getTestInstance({
+			secondaryStorage: createStringSecondaryStorage(store),
+			session: { storeSessionInDatabase: true },
+			advanced: { database: { defaultFindManyLimit: 2 } },
+		});
+		const { user, headers } = await signInWithTestUser();
+		const { internalAdapter } = await auth.$context;
+		const initialCount = (await internalAdapter.listSessions(user.id)).length;
+		const others = [];
+		for (let index = 0; index < 101; index++) {
+			others.push(await internalAdapter.createSession(user.id));
+		}
+		store.clear();
+
+		const sessions = await internalAdapter.listSessions(user.id);
+		expect(sessions).toHaveLength(initialCount + others.length);
+		expect(new Set(sessions.map((session) => session.token)).size).toBe(
+			initialCount + others.length,
+		);
+
+		const revoked = await client.revokeOtherSessions({
+			fetchOptions: { headers },
+		});
+		expect(revoked.data?.status).toBe(true);
+		expect(await internalAdapter.listSessions(user.id)).toHaveLength(1);
+		for (const session of others) {
+			expect(await internalAdapter.findSession(session.token)).toBeNull();
+		}
+		expect(
+			(await client.getSession({ fetchOptions: { headers } })).data?.user.id,
+		).toBe(user.id);
+	});
+
 	it("does not replace corrupt or expired cache entries with database sessions", async () => {
 		const store = new Map<string, string>();
 		const { auth, signInWithTestUser } = await getTestInstance({

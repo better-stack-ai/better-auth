@@ -340,15 +340,24 @@ export const createInternalAdapter = (
 				// The database holds every session, including ones whose cached copy
 				// failed to write, so list from it. Expired rows are skipped, as the
 				// cached list does.
-				const sessions = await (
-					await getCurrentAdapter(adapter)
-				).findMany<Session>({
-					model: "session",
-					where: [
-						{ field: "userId", value: userId },
-						{ field: "expiresAt", value: new Date(), operator: "gt" },
-					],
-				});
+				const currentAdapter = await getCurrentAdapter(adapter);
+				const sessions: Session[] = [];
+				const limit = 100;
+				const expiresAt = new Date();
+				let page: Session[];
+				do {
+					page = await currentAdapter.findMany<Session>({
+						model: "session",
+						where: [
+							{ field: "userId", value: userId },
+							{ field: "expiresAt", value: expiresAt, operator: "gt" },
+						],
+						limit,
+						offset: sessions.length,
+						sortBy: { field: "id", direction: "asc" },
+					});
+					sessions.push(...page);
+				} while (page.length === limit);
 				return sessions.map((session) =>
 					parseSessionOutput(ctx.options, session),
 				);
