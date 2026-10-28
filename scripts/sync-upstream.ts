@@ -22,7 +22,7 @@
  * Run: pnpm tsx scripts/sync-upstream.ts
  */
 
-import { existsSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path, { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -49,8 +49,7 @@ const HEADER_COMMENT_WITH_PATCHES = `/**
  * Source: {SOURCE_PATH}
  *
  * Patches applied:
- * - @better-auth/core/utils imports replaced with local ../utils/string
- *   (avoids dependency issues with published @better-auth/core package)
+ * Compatibility patches are defined in scripts/sync-upstream.ts.
  *
  * To update: run \`pnpm sync-upstream\`
  * Any manual changes will be overwritten.
@@ -67,6 +66,16 @@ interface CopyConfig {
 }
 
 const ROOT = path.resolve(__dirname, "..");
+// Keep vendored code aligned with the exact published Auth peer dependencies.
+const UPSTREAM_REF = "v1.7.14";
+
+function readUpstreamFile(sourcePath: string) {
+	return execFileSync("git", ["show", `${UPSTREAM_REF}:${sourcePath}`], {
+		cwd: ROOT,
+		encoding: "utf8",
+		stdio: ["ignore", "pipe", "pipe"],
+	});
+}
 
 const COPY_CONFIGS: CopyConfig[] = [
 	// Drizzle Adapter - vendored from the standalone @better-auth/drizzle-adapter package.
@@ -77,6 +86,7 @@ const COPY_CONFIGS: CopyConfig[] = [
 		to: "packages/btst/adapter-drizzle/src",
 		files: [
 			"drizzle-adapter.ts",
+			"date-columns.ts",
 			"query-builders.ts",
 			"join-relation-key.ts",
 			"schema-check.ts",
@@ -95,6 +105,37 @@ const COPY_CONFIGS: CopyConfig[] = [
 		from: "packages/memory-adapter/src",
 		to: "packages/btst/adapter-memory/src",
 		files: ["memory-adapter.ts", "query-builders.ts"],
+		transformImports: (content, sourcePath) => {
+			if (!sourcePath.endsWith("/memory-adapter.ts")) return content;
+			// Transaction snapshots clone Dates; equality must compare timestamps.
+			return content
+				.replace(
+					"export const memoryAdapter =",
+					`function equalValues(left: unknown, right: unknown): boolean {
+	return left instanceof Date && right instanceof Date
+		? left.getTime() === right.getTime()
+		: left === right;
+}
+
+export const memoryAdapter =`,
+				)
+				.replace(
+					/\/\/ @ts-expect-error\s+return value.includes\(record\[field\]\);/,
+					"return value.some((candidate) => equalValues(record[field], candidate));",
+				)
+				.replace(
+					/\/\/ @ts-expect-error\s+return !value.includes\(record\[field\]\);/,
+					"return !value.some((candidate) => equalValues(record[field], candidate));",
+				)
+				.replace(
+					"record[field] !== value",
+					"!equalValues(record[field], value)",
+				)
+				.replace(
+					"record[field] === value",
+					"equalValues(record[field], value)",
+				);
+		},
 	},
 
 	// MongoDB Adapter - vendored from the standalone @better-auth/mongo-adapter package.
@@ -162,12 +203,7 @@ async function copyFile(config: CopyConfig, file: string) {
 
 	console.log(`  ${file}`);
 
-	if (!existsSync(sourcePath)) {
-		console.warn(`    ⚠️  Source file not found: ${sourcePath}`);
-		return;
-	}
-
-	const originalContent = await fs.readFile(sourcePath, "utf-8");
+	const originalContent = readUpstreamFile(path.relative(ROOT, sourcePath));
 	let content = originalContent;
 
 	// Apply transform if provided
@@ -205,27 +241,20 @@ async function validateSources() {
 	let allValid = true;
 
 	for (const config of COPY_CONFIGS) {
-		const sourceDir = path.join(ROOT, config.from);
-		if (!existsSync(sourceDir)) {
-			console.error(`❌ Source directory not found: ${config.from}`);
-			allValid = false;
-			continue;
-		}
-
-		if (config.files) {
-			for (const file of config.files) {
-				const sourcePath = path.join(ROOT, config.from, file);
-				if (!existsSync(sourcePath)) {
-					console.error(`❌ Source file not found: ${config.from}/${file}`);
-					allValid = false;
-				}
+		for (const file of config.files ?? []) {
+			const sourcePath = path.posix.join(config.from, file);
+			try {
+				readUpstreamFile(sourcePath);
+			} catch {
+				console.error(`❌ Source not found: ${UPSTREAM_REF}:${sourcePath}`);
+				allValid = false;
 			}
 		}
 	}
 
 	if (!allValid) {
 		throw new Error(
-			"Some source files are missing. The upstream structure may have changed.",
+			"Fetch the pinned upstream tag before syncing: git fetch https://github.com/better-auth/better-auth.git tag v1.7.14",
 		);
 	}
 

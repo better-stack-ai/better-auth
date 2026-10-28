@@ -5,8 +5,7 @@
  * Source: packages/kysely-adapter/src/kysely-adapter.ts
  *
  * Patches applied:
- * - @better-auth/core/utils imports replaced with local ../utils/string
- *   (avoids dependency issues with published @better-auth/core package)
+ * Compatibility patches are defined in scripts/sync-upstream.ts.
  *
  * To update: run `pnpm sync-upstream`
  * Any manual changes will be overwritten.
@@ -937,9 +936,10 @@ export const kyselyAdapter = (
 					// `limit(1)`.
 					const targetIds =
 						config?.type === "mssql" ? selectIds.top(1) : selectIds.limit(1);
-					const query = db
-						.deleteFrom(model)
-						.where(`${model}.${idField}`, "in", targetIds);
+					// Recheck the guard on the target row after a concurrent write.
+					const query = applyWhere(
+						db.deleteFrom(model).where(`${model}.${idField}`, "in", targetIds),
+					);
 					return deleteWithReturning(query);
 				},
 				async incrementOne({ model, modelKey = model, where, increment, set }) {

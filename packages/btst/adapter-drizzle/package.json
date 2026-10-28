@@ -1,6 +1,6 @@
 {
   "name": "@btst/adapter-drizzle",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Drizzle adapter for btst",
   "type": "module",
   "license": "MIT",
@@ -43,15 +43,15 @@
     "@btst/db": "workspace:*"
   },
   "peerDependencies": {
-    "better-auth": "1.7.6",
-    "@better-auth/core": "1.7.6",
-    "@better-auth/utils": "0.4.2",
+    "better-auth": "1.7.14",
+    "@better-auth/core": "1.7.14",
+    "@better-auth/utils": "0.5.1",
     "drizzle-orm": "^0.45.2 || >=1.0.0-rc.1 <2.0.0"
   },
   "devDependencies": {
-    "better-auth": "workspace:*",
-    "@better-auth/core": "workspace:*",
-    "@better-auth/utils": "catalog:",
+    "better-auth": "1.7.14",
+    "@better-auth/core": "1.7.14",
+    "@better-auth/utils": "0.5.1",
     "drizzle-orm": "^0.45.2",
     "typescript": "catalog:",
     "unbuild": "catalog:"

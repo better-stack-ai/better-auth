@@ -1,13 +1,13 @@
 # Migrating to Better DB 3
 
-Upgrade the database, adapters, plugins, and CLI together to `3.0.0`.
+Upgrade the database, adapters, plugins, and CLI together to `3.0.1`.
 Install the matching Better Auth dependencies in every consumer:
 
 ```sh
-pnpm add @btst/db@3.0.0 better-auth@1.7.6 @better-auth/core@1.7.6 @better-auth/utils@0.4.2
+pnpm add @btst/db@3.0.1 better-auth@1.7.14 @better-auth/core@1.7.14 @better-auth/utils@0.5.1
 ```
 
-Use `@better-fetch/fetch@1.3.2` and `better-call@1.4.0` if your application
+Use `@better-fetch/fetch@1.3.3` and `better-call@1.4.4` if your application
 imports them directly. Do not retain overrides for earlier Better Auth versions.
 The Drizzle adapter now requires `drizzle-orm@^0.45.2` or a supported 1.0 release
 candidate (`>=1.0.0-rc.1 <2.0.0`). Kysely remains compatible with
@@ -44,8 +44,20 @@ Consumer project aliases, environment loading, server-only module handling, and
 consumer-resolved Prisma/Drizzle dependencies remain supported.
 
 ```sh
-pnpm dlx @btst/cli@3.0.0 generate --config ./lib/db.ts --output ./schema.ts --orm drizzle
+pnpm dlx @btst/cli@3.0.1 generate --config ./lib/db.ts --output ./schema.ts --orm drizzle
 ```
 
 The release remains ESM and CommonJS for the DB/adapters/plugins, and ESM for the
 CLI. The CLI-only repair release path remains available for later patches.
+
+## Security patch cohort
+
+Version 3.0.1 aligns the exact Auth/core peers with stable 1.7.14 and utils 0.5.1.
+It also refreshes the vendored Drizzle date conversion and mutation guard logic,
+Kysely guarded consumption and D1 connection handling, and MongoDB transaction
+retry/cleanup behavior from that stable tag. The memory adapter retains BTST's
+Date equality fix for isolated transaction snapshots.
+
+Development dependencies resolve the same published Auth artifacts as consumers;
+they do not resolve this fork's older local Auth source packages. The sync script
+reads the exact `v1.7.14` Git tag, including the new Drizzle date helper.

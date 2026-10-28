@@ -73,7 +73,7 @@ Only add what's necessary for the database-focused API. Everything else should b
 
 ### 3. Version Alignment
 
-- `@btst/*@3.0.0` tracks `better-auth@1.7.6` (see [migration guide](MIGRATION-3.md))
+- `@btst/*@3.0.1` tracks `better-auth@1.7.14` (see [migration guide](MIGRATION-3.md))
 - Minor `@btst` bump = minor `better-auth` bump (1.4→1.5 maps to 2.0→2.1)
 - Patch `@btst` cohort bump = patch `better-auth` bump only. The standalone
   `@btst/cli` may receive a CLI-only patch when database and adapter packages
@@ -141,9 +141,21 @@ For the full step-by-step runbook, see [WEEKLY-SYNC-UPSTREAM.md](../../WEEKLY-SY
 
 ### Running the Sync
 
+The sync reads the pinned stable Git tag `v1.7.14`, rather than the local Auth
+source tree. BTST development dependencies use the exact published Auth/core
+`1.7.14` and utils `0.5.1` artifacts, matching consumer peer dependencies.
+Fetch the tag before running the script:
+
 ```bash
-pnpm tsx scripts/sync-upstream.ts
+git fetch https://github.com/better-auth/better-auth.git tag v1.7.14
 ```
+
+```bash
+pnpm --filter @btst/cli exec tsx ../../../scripts/sync-upstream.ts
+```
+
+Memory adapter sync preserves BTST’s timestamp equality patch for isolated
+transaction snapshots; the existing regression test covers this behavior.
 
 The script will print which files it copied and whether import patches were applied.
 It **validates all source paths first** and fails with a clear error if any are missing
@@ -173,7 +185,7 @@ Files that received patches are marked with `⚠️ AUTO-GENERATED WITH PATCHES`
 2. Merge `upstream/main` and resolve conflicts (accept upstream for all non-btst files)
 3. Check if `sync-upstream.ts` source paths still exist — run the script and read errors
 4. Update `sync-upstream.ts` if new files were added or paths changed
-5. Run `pnpm tsx scripts/sync-upstream.ts`
+5. Run `pnpm --filter @btst/cli exec tsx ../../../scripts/sync-upstream.ts`
 6. Fix any import issues in `@btst` custom files that reference synced exports (e.g. if a function is renamed)
 7. Update snapshot tests: `cd packages/btst/cli && pnpm vitest run -u`
 8. Bump all `@btst` versions and `peerDependencies`

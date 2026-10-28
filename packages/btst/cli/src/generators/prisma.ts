@@ -5,8 +5,7 @@
  * Source: packages/cli/src/generators/prisma.ts
  *
  * Patches applied:
- * - @better-auth/core/utils imports replaced with local ../utils/string
- *   (avoids dependency issues with published @better-auth/core package)
+ * Compatibility patches are defined in scripts/sync-upstream.ts.
  *
  * To update: run `pnpm sync-upstream`
  * Any manual changes will be overwritten.
