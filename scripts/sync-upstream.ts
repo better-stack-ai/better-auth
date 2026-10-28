@@ -77,6 +77,7 @@ const COPY_CONFIGS: CopyConfig[] = [
 		to: "packages/btst/adapter-drizzle/src",
 		files: [
 			"drizzle-adapter.ts",
+			"date-columns.ts",
 			"query-builders.ts",
 			"join-relation-key.ts",
 			"schema-check.ts",

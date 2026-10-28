@@ -1,6 +1,6 @@
 {
   "name": "@btst/cli",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "CLI for btst schema generation and migration",
   "type": "module",
   "license": "MIT",
@@ -51,9 +51,9 @@
     "zod": "catalog:"
   },
   "peerDependencies": {
-    "better-auth": "1.7.6",
-    "@better-auth/core": "1.7.6",
-    "@better-auth/utils": "0.4.2"
+    "better-auth": "1.7.14",
+    "@better-auth/core": "1.7.14",
+    "@better-auth/utils": "0.5.1"
   },
   "optionalDependencies": {
     "pg": "^8.14.0",

@@ -1,6 +1,6 @@
 {
   "name": "@btst/adapter-prisma",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Prisma adapter for btst",
   "type": "module",
   "license": "MIT",
@@ -43,9 +43,9 @@
     "@btst/db": "workspace:*"
   },
   "peerDependencies": {
-    "better-auth": "1.7.6",
-    "@better-auth/core": "1.7.6",
-    "@better-auth/utils": "0.4.2",
+    "better-auth": "1.7.14",
+    "@better-auth/core": "1.7.14",
+    "@better-auth/utils": "0.5.1",
     "@prisma/client": "^5.0.0 || ^6.0.0 || ^7.0.0",
     "prisma": "^5.0.0 || ^6.0.0 || ^7.0.0"
   },

@@ -46,6 +46,7 @@ import {
 	or,
 	sql,
 } from "drizzle-orm";
+import { fromDriverDate, toDriverDate } from "./date-columns";
 import type { RelationKeysByModel } from "./join-relation-key";
 import {
 	buildRelationKeysByModel,
@@ -1214,10 +1215,19 @@ export const drizzleAdapter = (db: DB, config: DrizzleAdapterConfig) => {
 						.from(table)
 						.where(...clause)
 						.limit(1);
+					// The guard is repeated on the UPDATE itself, as the kysely adapter
+					// does on this path. Under READ COMMITTED, PostgreSQL re-evaluates an
+					// UPDATE's own WHERE against the new row version after waiting on a
+					// concurrent writer, but not an uncorrelated subquery's: with the
+					// guard only in `targetIds`, `id IN (...)` still matched and every
+					// waiting compare-and-swap succeeded once the first one committed
+					// (#10557). The MySQL branch above needs no such re-check: it holds
+					// the row under SELECT ... FOR UPDATE in the same transaction.
+					// ./relations-v2/index.ts carries its own copy of this method.
 					const updated = await db
 						.update(table)
 						.set(assignments)
-						.where(inArray(idColumn, targetIds))
+						.where(and(...clause, inArray(idColumn, targetIds)))
 						.returning();
 					return (updated[0] as any) ?? null;
 				},
@@ -1237,6 +1247,11 @@ export const drizzleAdapter = (db: DB, config: DrizzleAdapterConfig) => {
 					? true
 					: false,
 			supportsArrays: config.provider === "pg" ? true : false,
+			customTransformInput: ({ data, fieldAttributes, model, field }) => {
+				if (fieldAttributes.type !== "date") return data;
+				const schema = config.schema || db._.fullSchema;
+				return toDriverDate(data, schema?.[model]?.[field], config.provider);
+			},
 			customTransformOutput: ({ data, fieldAttributes }) => {
 				// not all providers support dates
 				// one such example case is https://github.com/better-auth/better-auth/issues/7819
@@ -1244,7 +1259,7 @@ export const drizzleAdapter = (db: DB, config: DrizzleAdapterConfig) => {
 					if (data === null || data === undefined) {
 						return data;
 					}
-					return new Date(data);
+					return fromDriverDate(data);
 				}
 				return data;
 			},
